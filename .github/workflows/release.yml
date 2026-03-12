@@ -63,11 +63,11 @@ jobs:
             echo "Publishing SSE Server for $runtime..."
             dotnet publish SharpTools.SseServer/SharpTools.SseServer.csproj \
               -c Release \
-              -r $runtime \
-              --self-contained \
-              -o publish/sse-$runtime \
-              /p:PublishSingleFile=true \
-              /p:PublishTrimmed=false
+              --runtime $runtime \
+              --self-contained true \
+              --output publish/sse-$runtime \
+              --property:PublishSingleFile=true \
+              --property:PublishTrimmed=false
           done
         shell: bash
 
@@ -78,11 +78,11 @@ jobs:
             echo "Publishing Stdio Server for $runtime..."
             dotnet publish SharpTools.StdioServer/SharpTools.StdioServer.csproj \
               -c Release \
-              -r $runtime \
-              --self-contained \
-              -o publish/stdio-$runtime \
-              /p:PublishSingleFile=true \
-              /p:PublishTrimmed=false
+              --runtime $runtime \
+              --self-contained true \
+              --output publish/stdio-$runtime \
+              --property:PublishSingleFile=true \
+              --property:PublishTrimmed=false
           done
         shell: bash
 
