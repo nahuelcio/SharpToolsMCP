@@ -1,6 +1,6 @@
 #!/bin/bash
 # SharpTools Build Script for Linux/macOS
-# Builds self-contained executables for all platforms
+# Builds the stdio server for all platforms
 
 set -e
 
@@ -35,17 +35,6 @@ for runtime in "${RUNTIMES[@]}"; do
     echo "Publishing for: $runtime"
     echo "----------------------------------------"
     
-    # SSE Server
-    echo "  Building SSE Server..."
-    dotnet publish "$PROJECT_ROOT/SharpTools.SseServer/SharpTools.SseServer.csproj" \
-        -c Release \
-        -r "$runtime" \
-        --self-contained \
-        -o "$OUTPUT_DIR/sse-$runtime" \
-        /p:PublishSingleFile=false \
-        /p:PublishTrimmed=false
-    
-    # Stdio Server
     echo "  Building Stdio Server..."
     dotnet publish "$PROJECT_ROOT/SharpTools.StdioServer/SharpTools.StdioServer.csproj" \
         -c Release \

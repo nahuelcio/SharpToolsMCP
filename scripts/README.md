@@ -14,7 +14,7 @@ This directory contains build, packaging, and installation scripts for SharpTool
 ./scripts/build.sh
 ```
 
-These scripts build self-contained executables for all platforms (Windows, Linux, macOS) and output them to the `publish/` directory.
+These scripts build the stdio server for all platforms (Windows, Linux, macOS) and output it to the `publish/` directory.
 
 ## Package Scripts (For Release)
 
@@ -34,14 +34,12 @@ These scripts create distributable packages (`.zip` for Windows, `.tar.gz` for U
 
 ### Windows
 ```powershell
-.\scripts\install.ps1 -ServerType sse
-.\scripts\install.ps1 -ServerType stdio
+.\scripts\install.ps1
 ```
 
 ### Linux/macOS
 ```bash
-./scripts/install.sh --server sse
-./scripts/install.sh --server stdio
+./scripts/install.sh
 ```
 
 These scripts download the latest release from GitHub and install it to your system.
@@ -77,16 +75,16 @@ If you want to install from a local build instead of downloading from GitHub:
 ### Windows
 ```powershell
 # After running build.ps1
-$installDir = "$env:LOCALAPPDATA\SharpTools\sse"
+$installDir = "$env:LOCALAPPDATA\SharpTools\stdio"
 New-Item -ItemType Directory -Path $installDir -Force
-Copy-Item -Recurse -Force publish\sse-win-x64\* $installDir
+Copy-Item -Recurse -Force publish\stdio-win-x64\* $installDir
 ```
 
 ### Linux/macOS
 ```bash
 # After running build.sh
-mkdir -p ~/.sharptools/sse
-cp -r publish/sse-linux-x64/* ~/.sharptools/sse/
-chmod +x ~/.sharptools/sse/stserver
-ln -s ~/.sharptools/sse/stserver ~/.local/bin/sharptools-sse
+mkdir -p ~/.sharptools/stdio
+cp -r publish/stdio-linux-x64/* ~/.sharptools/stdio/
+chmod +x ~/.sharptools/stdio/SharpTools.StdioServer
+ln -s ~/.sharptools/stdio/SharpTools.StdioServer ~/.local/bin/sharptools
 ```

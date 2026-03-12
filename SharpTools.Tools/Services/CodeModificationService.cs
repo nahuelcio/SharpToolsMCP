@@ -498,83 +498,12 @@ public class CodeModificationService : ICodeModificationService {
         }
     }
     private async Task ProcessGitOperationsAsync(string solutionPath, List<string> changedFilePaths, string commitMessage, CancellationToken cancellationToken) {
-        if (string.IsNullOrEmpty(solutionPath) || changedFilePaths.Count == 0) {
-            return;
-        }
-
-        try {
-            // Check if solution is in a git repo
-            if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken)) {
-                _logger.LogDebug("Solution is not in a Git repository, skipping Git operations");
-                return;
-            }
-
-            _logger.LogDebug("Solution is in a Git repository, processing Git operations");
-
-            // Check if already on sharptools branch
-            if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken)) {
-                _logger.LogInformation("Not on a SharpTools branch, creating one");
-                await _gitService.EnsureSharpToolsBranchAsync(solutionPath, cancellationToken);
-            }
-
-            // Commit changes with the provided commit message
-            await _gitService.CommitChangesAsync(solutionPath, changedFilePaths, commitMessage, cancellationToken);
-            _logger.LogInformation("Git operations completed successfully with commit message: {CommitMessage}", commitMessage);
-        } catch (Exception ex) {
-            // Log but don't fail the operation if Git operations fail
-            _logger.LogWarning(ex, "Git operations failed but code changes were still applied");
-        }
+        await Task.CompletedTask;
+        _logger.LogDebug("Automatic Git operations are disabled.");
     }
     public async Task<(bool success, string message)> UndoLastChangeAsync(CancellationToken cancellationToken) {
-        if (_solutionManager.CurrentWorkspace is not MSBuildWorkspace workspace) {
-            _logger.LogError("Cannot undo changes: Workspace is not an MSBuildWorkspace or is null.");
-            var message = "Error: Workspace is not an MSBuildWorkspace or is null. Cannot undo.";
-            return (false, message);
-        }
-
-        var currentSolution = _solutionManager.CurrentSolution;
-        if (currentSolution?.FilePath == null) {
-            _logger.LogError("Cannot undo changes: Current solution or its file path is null.");
-            var message = "Error: No solution loaded or solution file path is null. Cannot undo.";
-            return (false, message);
-        }
-
-        var solutionPath = currentSolution.FilePath;
-
-        // Check if solution is in a git repository
-        if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken)) {
-            _logger.LogError("Cannot undo changes: Solution is not in a Git repository.");
-            throw new McpException("Error: Solution is not in a Git repository. Undo functionality requires Git version control.");
-        }
-
-        // Check if we're on a sharptools branch
-        if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken)) {
-            _logger.LogError("Cannot undo changes: Not on a SharpTools branch.");
-            var message = "Error: Not on a SharpTools branch. Undo is only available on SharpTools branches.";
-            return (false, message);
-        }
-
-        _logger.LogInformation("Attempting to undo last change by reverting last Git commit.");
-
-        // Perform git revert with diff
-        var (revertSuccess, diff) = await _gitService.RevertLastCommitAsync(solutionPath, cancellationToken);
-        if (!revertSuccess) {
-            _logger.LogError("Git revert operation failed.");
-            var message = "Error: Failed to revert the last Git commit. There may be no commits to revert or the operation failed.";
-            return (false, message);
-        }
-
-        // Reload the solution from disk to reflect the reverted changes
-        await _solutionManager.ReloadSolutionFromDiskAsync(cancellationToken);
-
-        _logger.LogInformation("Successfully reverted the last change using Git.");
-        var successMessage = "Successfully reverted the last change by reverting the last Git commit. Solution reloaded from disk.";
-
-        // Add the diff to the success message if available
-        if (!string.IsNullOrEmpty(diff)) {
-            successMessage += "\n\nChanges undone:\n" + diff;
-        }
-
-        return (true, successMessage);
+        await Task.CompletedTask;
+        _logger.LogInformation("Undo is disabled because automatic Git integration has been removed.");
+        return (false, "Undo is no longer supported. SharpTools no longer creates branches or automatic Git commits.");
     }
 }

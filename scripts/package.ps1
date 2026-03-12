@@ -45,28 +45,24 @@ Write-Host "Version: $Version" -ForegroundColor Green
 Write-Host ""
 
 $Runtimes = @("win-x64", "win-arm64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64")
-$Servers = @("sse", "stdio")
 
 foreach ($runtime in $Runtimes) {
-    foreach ($server in $Servers) {
-        $srcDir = "$PublishDir\$server-$runtime"
-        
-        if (-not (Test-Path $srcDir)) {
-            Write-Host "Warning: $srcDir not found, skipping..." -ForegroundColor Yellow
-            continue
-        }
-        
-        Write-Host "Creating package: $server-$runtime..." -ForegroundColor Yellow
-        
-        $packageName = "sharptools-$server-$runtime-$Version.zip"
-        
-        # Create ZIP using .NET compression
-        Add-Type -AssemblyName System.IO.Compression.FileSystem
-        $zipPath = "$PackagesDir\$packageName"
-        [System.IO.Compression.ZipFile]::CreateFromDirectory($srcDir, $zipPath)
-        
-        Write-Host "  Created: $packageName" -ForegroundColor Green
+    $srcDir = "$PublishDir\stdio-$runtime"
+    
+    if (-not (Test-Path $srcDir)) {
+        Write-Host "Warning: $srcDir not found, skipping..." -ForegroundColor Yellow
+        continue
     }
+    
+    Write-Host "Creating package: stdio-$runtime..." -ForegroundColor Yellow
+    
+    $packageName = "sharptools-stdio-$runtime-$Version.zip"
+    
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zipPath = "$PackagesDir\$packageName"
+    [System.IO.Compression.ZipFile]::CreateFromDirectory($srcDir, $zipPath)
+    
+    Write-Host "  Created: $packageName" -ForegroundColor Green
 }
 
 Write-Host ""

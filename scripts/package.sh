@@ -32,31 +32,26 @@ echo ""
 
 # Create packages for each runtime
 RUNTIMES=("win-x64" "win-arm64" "linux-x64" "linux-arm64" "osx-x64" "osx-arm64")
-SERVERS=("sse" "stdio")
 
 for runtime in "${RUNTIMES[@]}"; do
-    for server in "${SERVERS[@]}"; do
-        src_dir="$PUBLISH_DIR/$server-$runtime"
-        
-        if [ ! -d "$src_dir" ]; then
-            echo "Warning: $src_dir not found, skipping..."
-            continue
-        fi
-        
-        echo "Creating package: $server-$runtime..."
-        
-        if [[ "$runtime" == win-* ]]; then
-            # Windows - create ZIP
-            package_name="sharptools-$server-$runtime-$VERSION.zip"
-            (cd "$src_dir" && zip -r "$PACKAGES_DIR/$package_name" .)
-        else
-            # Unix - create tar.gz
-            package_name="sharptools-$server-$runtime-$VERSION.tar.gz"
-            tar -czf "$PACKAGES_DIR/$package_name" -C "$src_dir" .
-        fi
-        
-        echo "  Created: $package_name"
-    done
+    src_dir="$PUBLISH_DIR/stdio-$runtime"
+
+    if [ ! -d "$src_dir" ]; then
+        echo "Warning: $src_dir not found, skipping..."
+        continue
+    fi
+
+    echo "Creating package: stdio-$runtime..."
+
+    if [[ "$runtime" == win-* ]]; then
+        package_name="sharptools-stdio-$runtime-$VERSION.zip"
+        (cd "$src_dir" && zip -r "$PACKAGES_DIR/$package_name" .)
+    else
+        package_name="sharptools-stdio-$runtime-$VERSION.tar.gz"
+        tar -czf "$PACKAGES_DIR/$package_name" -C "$src_dir" .
+    fi
+
+    echo "  Created: $package_name"
 done
 
 echo ""

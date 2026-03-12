@@ -382,39 +382,7 @@ public class DocumentOperationsService : IDocumentOperationsService {
         return i > 0 ? line.Substring(i) : line;
     }
     public async Task ProcessGitOperationsAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken, string commitMessage) {
-        var filesList = filePaths.Where(f => !string.IsNullOrEmpty(f) && File.Exists(f)).ToList();
-        if (!filesList.Any()) {
-            return;
-        }
-
-        try {
-            // Get solution path
-            var solutionPath = _solutionManager.CurrentSolution?.FilePath;
-            if (string.IsNullOrEmpty(solutionPath)) {
-                _logger.LogDebug("Solution path is not available, skipping Git operations");
-                return;
-            }
-
-            // Check if solution is in a git repo
-            if (!await _gitService.IsRepositoryAsync(solutionPath, cancellationToken)) {
-                _logger.LogDebug("Solution is not in a Git repository, skipping Git operations");
-                return;
-            }
-
-            _logger.LogDebug("Solution is in a Git repository, processing Git operations for {Count} files", filesList.Count);
-
-            // Check if already on sharptools branch
-            if (!await _gitService.IsOnSharpToolsBranchAsync(solutionPath, cancellationToken)) {
-                _logger.LogInformation("Not on a SharpTools branch, creating one");
-                await _gitService.EnsureSharpToolsBranchAsync(solutionPath, cancellationToken);
-            }
-
-            // Commit changes with the provided commit message
-            await _gitService.CommitChangesAsync(solutionPath, filesList, commitMessage, cancellationToken);
-            _logger.LogInformation("Git operations completed successfully for {Count} files with commit message: {CommitMessage}", filesList.Count, commitMessage);
-        } catch (Exception ex) {
-            // Log but don't fail the operation if Git operations fail
-            _logger.LogWarning(ex, "Git operations failed for {Count} files but file operations were still applied", filesList.Count);
-        }
+        await Task.CompletedTask;
+        _logger.LogDebug("Automatic Git operations are disabled.");
     }
 }

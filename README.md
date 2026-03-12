@@ -4,7 +4,7 @@ SharpTools is a robust service designed to empower AI agents with advanced capab
 
 SharpTools is designed to give AI the same insights and tools a human developer relies on, leading to more intelligent and reliable code assistance. It is effectively a simple IDE, made for an AI user.
 
-Due to the comprehensive nature of the suite, it can almost be used completely standalone for editing existing C# solutions. If you use the SSE server and port forward your router, I think it's even possible to have Claude's web chat ui connect to this and have it act as a full coding assistant.
+Due to the comprehensive nature of the suite, it can almost be used completely standalone for editing existing C# solutions.
 
 ## Prompts
 
@@ -40,10 +40,6 @@ I intend to maintain and improve it for as long as I am using it, and I welcome 
     *   Embedded PDBs.
     *   Decompilation (ILSpy-based) as a fallback.
 *   **Precise, Roslyn-Based Modifications:** Enables surgical code changes (add/overwrite/rename/move members, find/replace) rather than simple text manipulation.
-*   **Automated Git Integration:**
-    *   Creates dedicated, timestamped `sharptools/` branches for all modifications.
-    *   Automatically commits every code change with a descriptive message.
-    *   Offers a Git-powered `Undo` for the last modification.
 *   **Concise AI Feedback Loop:**
     *   Confirms changes with precise diffs instead of full code blocks.
     *   Provides immediate, in-tool compilation error reports after modifications.
@@ -55,9 +51,7 @@ I intend to maintain and improve it for as long as I am using it, and I welcome 
     *   Can analyze projects targeting any .NET version, from Framework to Core to 5+
     *   Compatible with both modern SDK-style and legacy C# project formats.
     *   Respects `.editorconfig` settings for consistent code formatting.
-*   **MCP Server Interface:** Exposes tools via Model Context Protocol (MCP) through:
-    *   Server-Sent Events (SSE) for remote clients.
-    *   Standard I/O (Stdio) for local process communication.
+*   **MCP Server Interface:** Exposes tools via Model Context Protocol (MCP) through standard I/O (Stdio) for local process communication.
 
 ## Exposed Tools
 
@@ -97,7 +91,6 @@ SharpTools exposes a variety of "SharpTool_*" functions via MCP. Here's a brief 
 *   `SharpTool_RenameSymbol`: Renames a symbol and updates all its references throughout the solution.
 *   `SharpTool_FindAndReplace`: Performs regex-based find and replace operations within a specified symbol's declaration or across files matching a glob pattern.
 *   `SharpTool_MoveMember`: Moves a member from one type/namespace to another.
-*   `SharpTool_Undo`: Reverts the last applied change using Git integration.
 *   ~(Disabled) `SharpTool_ReplaceAllReferences`: Replaces all references to a symbol with specified C# code.~
 
 ### Package Tools
@@ -161,28 +154,6 @@ dotnet build SharpTools.sln
 
 ## Running the Servers
 
-### SSE Server (HTTP)
-
-The SSE server hosts the tools on an HTTP endpoint.
-
-```bash
-# Navigate to the SseServer project directory
-cd SharpTools.SseServer
-
-# Run with default options (port 3001)
-dotnet run
-
-# Run with specific options
-dotnet run -- --port 3005 --log-file ./logs/mcp-sse-server.log --log-level Debug
-```
-Key Options:
-*   `--port <number>`: Port to listen on (default: 3001).
-*   `--log-file <path>`: Path to a log file.
-*   `--log-level <level>`: Minimum log level (Verbose, Debug, Information, Warning, Error, Fatal).
-*   `--load-solution <path>`: Path to a `.sln` file to load on startup. Useful for manual testing. It is recommended to let the AI run the LoadSolution tool instead, as it returns some useful information.
-*   `--build-configuration <config>`: Build configuration to use when loading the solution (e.g., `Debug`, `Release`).
-*   `--disable-git`: Disables all Git integration features.
-
 ### Stdio Server
 
 The Stdio server communicates over standard input/output.
@@ -211,7 +182,6 @@ Key Options:
 *   `--log-level <level>`: Minimum log level.
 *   `--load-solution <path>`: Path to a `.sln` file to load on startup. Useful for manual testing. It is recommended to let the AI run the LoadSolution tool instead, as it returns some useful information.
 *   `--build-configuration <config>`: Build configuration to use when loading the solution (e.g., `Debug`, `Release`).
-*   `--disable-git`: Disables all Git integration features.
 
 ## Contributing
 

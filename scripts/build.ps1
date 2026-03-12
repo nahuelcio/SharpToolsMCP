@@ -1,5 +1,5 @@
 # SharpTools Build Script for Windows
-# Builds self-contained executables for all platforms
+# Builds the stdio server for all platforms
 
 param(
     [string]$Configuration = "Release",
@@ -36,17 +36,6 @@ foreach ($runtime in $Runtimes) {
     Write-Host "Publishing for: $runtime" -ForegroundColor Cyan
     Write-Host "----------------------------------------" -ForegroundColor Cyan
     
-    # SSE Server
-    Write-Host "  Building SSE Server..." -ForegroundColor Yellow
-    dotnet publish "$ProjectRoot\SharpTools.SseServer\SharpTools.SseServer.csproj" `
-        -c $Configuration `
-        -r $runtime `
-        --self-contained `
-        -o "$OutputDir\sse-$runtime" `
-        /p:PublishSingleFile=false `
-        /p:PublishTrimmed=false
-    
-    # Stdio Server
     Write-Host "  Building Stdio Server..." -ForegroundColor Yellow
     dotnet publish "$ProjectRoot\SharpTools.StdioServer\SharpTools.StdioServer.csproj" `
         -c $Configuration `
@@ -66,5 +55,5 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Output directory: $OutputDir" -ForegroundColor Green
 Write-Host ""
-Write-Host "Created packages:" -ForegroundColor Green
+Write-Host "Created publish directories:" -ForegroundColor Green
 Get-ChildItem $OutputDir | Select-Object Name
