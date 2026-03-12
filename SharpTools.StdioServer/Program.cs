@@ -14,7 +14,6 @@ using System.IO;
 using System;
 using System.Threading.Tasks;
 using System.Threading;
-using Microsoft.Build.Locator;
 
 namespace SharpTools.StdioServer;
 
@@ -23,7 +22,6 @@ public static class Program {
     public const string ApplicationVersion = "0.0.1";
     public const string LogOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
     public static async Task<int> Main(string[] args) {
-        RegisterMsBuild();
         _ = typeof(SolutionTools);
         _ = typeof(AnalysisTools);
         _ = typeof(CodeFixTools);
@@ -154,27 +152,6 @@ public static class Program {
         } finally {
             Log.Information("{AppName} shutting down.", ApplicationName);
             await Log.CloseAndFlushAsync();
-        }
-    }
-
-    private static void RegisterMsBuild() {
-        if (MSBuildLocator.IsRegistered) {
-            return;
-        }
-
-        try {
-            MSBuildLocator.RegisterDefaults();
-        } catch (Exception ex) {
-            throw new InvalidOperationException(
-                "Failed to register MSBuild. Install a compatible .NET SDK/MSBuild toolchain and ensure 'dotnet --info' works in the same environment that launches SharpTools.",
-                ex);
-        }
-
-        var buildHostNetcorePath = Path.Combine(AppContext.BaseDirectory, "BuildHost-netcore", "Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll");
-        if (!File.Exists(buildHostNetcorePath)) {
-            throw new FileNotFoundException(
-                $"Roslyn build host was not found at '{buildHostNetcorePath}'. Reinstall SharpTools from a non-single-file publish so the BuildHost-netcore folder is deployed next to the executable.",
-                buildHostNetcorePath);
         }
     }
 }

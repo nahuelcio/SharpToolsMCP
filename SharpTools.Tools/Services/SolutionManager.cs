@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
+using Microsoft.Build.Locator;
 using ModelContextProtocol;
 using SharpTools.Tools.Mcp.Tools;
 namespace SharpTools.Tools.Services;
@@ -15,6 +16,7 @@ public sealed class SolutionManager : ISolutionManager {
     private readonly ConcurrentDictionary<ProjectId, Compilation> _compilationCache = new();
     private readonly ConcurrentDictionary<DocumentId, SemanticModel> _semanticModelCache = new();
     private readonly ConcurrentDictionary<string, Type> _allLoadedReflectionTypesCache = new();
+    private static int _msbuildRegistered;
     [MemberNotNullWhen(true, nameof(_workspace), nameof(_currentSolution))]
     public bool IsSolutionLoaded => _workspace != null && _currentSolution != null;
     public MSBuildWorkspace? CurrentWorkspace => _workspace;
@@ -33,6 +35,7 @@ public sealed class SolutionManager : ISolutionManager {
         }
         UnloadSolution(); // Clears previous state including _allLoadedReflectionTypesCache
         try {
+            EnsureMsBuildRegistered();
             _logger.LogInformation("Creating MSBuildWorkspace...");
             var properties = new Dictionary<string, string> {
                 { "DesignTimeBuild", "true" }
@@ -53,6 +56,88 @@ public sealed class SolutionManager : ISolutionManager {
             UnloadSolution();
             throw;
         }
+    }
+    private void EnsureMsBuildRegistered() {
+        if (Interlocked.Exchange(ref _msbuildRegistered, 1) == 1 || MSBuildLocator.IsRegistered) {
+            return;
+        }
+
+        try {
+            var msbuildPath = FindMsBuildPath();
+            if (string.IsNullOrWhiteSpace(msbuildPath)) {
+                throw new InvalidOperationException("Could not locate an MSBuild SDK directory.");
+            }
+
+            _logger.LogInformation("Registering MSBuild from {MsBuildPath}", msbuildPath);
+            MSBuildLocator.RegisterMSBuildPath(msbuildPath);
+
+            var buildHostNetcorePath = Path.Combine(AppContext.BaseDirectory, "BuildHost-netcore", "Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll");
+            if (!File.Exists(buildHostNetcorePath)) {
+                throw new FileNotFoundException(
+                    $"Roslyn build host was not found at '{buildHostNetcorePath}'. Reinstall SharpTools from a non-single-file publish so the BuildHost-netcore folder is deployed next to the executable.",
+                    buildHostNetcorePath);
+            }
+        } catch {
+            Interlocked.Exchange(ref _msbuildRegistered, 0);
+            throw;
+        }
+    }
+    private static string? FindMsBuildPath() {
+        var candidateRoots = new List<string>();
+
+        var overridePath = Environment.GetEnvironmentVariable("SHARPTOOLS_MSBUILD_PATH");
+        if (!string.IsNullOrWhiteSpace(overridePath) && Directory.Exists(overridePath)) {
+            return overridePath;
+        }
+
+        var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
+        if (!string.IsNullOrWhiteSpace(dotnetRoot)) {
+            candidateRoots.Add(dotnetRoot);
+        }
+
+        var dotnetRootX64 = Environment.GetEnvironmentVariable("DOTNET_ROOT_X64");
+        if (!string.IsNullOrWhiteSpace(dotnetRootX64)) {
+            candidateRoots.Add(dotnetRootX64);
+        }
+
+        if (OperatingSystem.IsLinux()) {
+            candidateRoots.Add("/usr/share/dotnet");
+            candidateRoots.Add("/usr/local/share/dotnet");
+        } else if (OperatingSystem.IsMacOS()) {
+            candidateRoots.Add("/usr/local/share/dotnet");
+            candidateRoots.Add("/opt/homebrew/share/dotnet");
+        } else if (OperatingSystem.IsWindows()) {
+            candidateRoots.Add(@"C:\Program Files\dotnet");
+        }
+
+        foreach (var root in candidateRoots
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)) {
+            var sdkDir = Path.Combine(root, "sdk");
+            if (!Directory.Exists(sdkDir)) {
+                continue;
+            }
+
+            var bestSdk = Directory.GetDirectories(sdkDir)
+                .Select(path => new {
+                    Path = path,
+                    VersionText = System.IO.Path.GetFileName(path),
+                    HasMsBuild = File.Exists(System.IO.Path.Combine(path, "MSBuild.dll"))
+                })
+                .Where(x => x.HasMsBuild)
+                .OrderByDescending(x => ParseVersion(x.VersionText))
+                .FirstOrDefault();
+
+            if (bestSdk != null) {
+                return bestSdk.Path;
+            }
+        }
+
+        return null;
+    }
+    private static Version ParseVersion(string versionText) {
+        var normalized = versionText.Split('-')[0];
+        return Version.TryParse(normalized, out var version) ? version : new Version(0, 0);
     }
     private void InitializeMetadataContextAndReflectionCache(Solution solution, CancellationToken cancellationToken = default) {
         // Check cancellation at entry point

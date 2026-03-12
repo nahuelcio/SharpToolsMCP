@@ -61,3 +61,16 @@ Thumbs.db
 DS_Store
 
 publish/
+
+# Local Codex/dotnet test artifacts
+.dotnet-home/
+publish-test/
+*-stdio.log
+build-stdio.log
+build-tools.log
+dotnet-build.log
+dotnet-version.log
+restore-stdio.log
+restore-tools.log
+publish-test
+.dotnet-home

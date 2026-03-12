@@ -46,4 +46,9 @@
       Condition="'@(RoslynBuildHostFiles)' != ''" />
   </Target>
 
+  <Target Name="RemoveConflictingRuntimeAssemblies" AfterTargets="Publish">
+    <!-- Avoid shadowing .NET 8 inbox assemblies with older NuGet-carried copies in the app root. -->
+    <Delete Files="$(PublishDir)System.Memory.dll" Condition="Exists('$(PublishDir)System.Memory.dll')" />
+  </Target>
+
 </Project>

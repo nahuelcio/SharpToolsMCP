@@ -25,13 +25,17 @@ $ServerType = "stdio"
 
 # Detect platform
 function Get-Platform {
-    $arch = (Get-CimInstance Win32_Processor).AddressWidth | Select-Object -First 1
-    if ($arch -eq 64) {
-        return "win-x64"
-    } elseif ($arch -eq 32) {
-        return "win-arm64"
-    } else {
-        throw "Unsupported architecture: $arch"
+    $architecture = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    switch ($architecture) {
+        "X64" {
+            return "win-x64"
+        }
+        "Arm64" {
+            return "win-arm64"
+        }
+        default {
+            throw "Unsupported architecture: $architecture"
+        }
     }
 }
 
@@ -82,7 +86,9 @@ Invoke-WebRequest -Uri $DownloadUrl -OutFile $ZipPath -UseBasicParsing
 
 # Extract
 Write-Host "Extracting..." -ForegroundColor Yellow
-Expand-Archive -Path $ZipPath -DestinationPath $TempDir -Force
+$ExtractDir = Join-Path $TempDir "extracted"
+New-Item -ItemType Directory -Path $ExtractDir | Out-Null
+Expand-Archive -Path $ZipPath -DestinationPath $ExtractDir -Force
 
 # Install
 Write-Host ""
@@ -101,13 +107,23 @@ if (Test-Path $ServerInstallDir) {
 New-Item -ItemType Directory -Path $ServerInstallDir | Out-Null
 
 # Copy new version
-Copy-Item -Path "$TempDir\*" -Destination $ServerInstallDir -Recurse -Force
+Copy-Item -Path "$ExtractDir\*" -Destination $ServerInstallDir -Recurse -Force
 
 # Find executable
 $Executable = Join-Path $ServerInstallDir "stserver.exe"
 if (-not (Test-Path $Executable)) {
     $Executable = Join-Path $ServerInstallDir "SharpTools.StdioServer.exe"
 }
+
+if (-not (Test-Path $Executable)) {
+    throw "Could not find server executable in $ServerInstallDir"
+}
+
+$CommandShimPath = Join-Path $InstallDir "sharptools.cmd"
+$CommandShimContent = "@echo off`r`n\"$Executable\" %*"
+Set-Content -Path $CommandShimPath -Value $CommandShimContent -Encoding ASCII
+
+$CommandPath = $CommandShimPath
 
 # Create symlink in WindowsApps folder (requires developer mode or admin)
 $LinkPath = Join-Path $BinDir "sharptools.exe"
@@ -117,9 +133,11 @@ try {
         Remove-Item $LinkPath -Force
     }
     New-Item -ItemType SymbolicLink -Path $LinkPath -Target $Executable -Force | Out-Null
+    $CommandPath = $LinkPath
 } catch {
     Write-Host "Warning: Could not create symlink in $BinDir" -ForegroundColor Yellow
-    Write-Host "You may need to run as Administrator or add $ServerInstallDir to PATH manually" -ForegroundColor Yellow
+    Write-Host "Using fallback command shim: $CommandShimPath" -ForegroundColor Yellow
+    Write-Host "Add $InstallDir to PATH to run 'sharptools'" -ForegroundColor Yellow
 }
 
 Write-Host ""
@@ -129,6 +147,7 @@ Write-Color "========================================" "Green"
 Write-Host ""
 Write-Host "Installed: sharptools"
 Write-Host "Location: $Executable"
+Write-Host "Command: $CommandPath"
 Write-Host ""
 Write-Host "Usage:" -ForegroundColor Cyan
 Write-Host "  sharptools --help"

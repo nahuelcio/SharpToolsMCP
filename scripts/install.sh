@@ -10,6 +10,14 @@ INSTALL_DIR="${INSTALL_DIR:-$HOME/.sharptools}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 SERVER_TYPE="stdio"
 
+require_command() {
+    local command_name="$1"
+    if ! command -v "$command_name" >/dev/null 2>&1; then
+        echo -e "${RED}Error: Required command not found: $command_name${NC}" >&2
+        exit 1
+    fi
+}
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -80,8 +88,14 @@ PLATFORM=$(detect_platform)
 echo "Detected platform: $PLATFORM"
 echo ""
 
+require_command curl
+require_command tar
+require_command mktemp
+
 # Create temporary directory
 TEMP_DIR=$(mktemp -d)
+EXTRACT_DIR="$TEMP_DIR/extracted"
+mkdir -p "$EXTRACT_DIR"
 trap "rm -rf $TEMP_DIR" EXIT
 
 # Get latest release from GitHub API
@@ -114,7 +128,7 @@ echo ""
 curl -L -o "$TEMP_DIR/sharptools.tar.gz" "$DOWNLOAD_URL"
 
 echo "Extracting..."
-tar -xzf "$TEMP_DIR/sharptools.tar.gz" -C "$TEMP_DIR"
+tar -xzf "$TEMP_DIR/sharptools.tar.gz" -C "$EXTRACT_DIR"
 
 # Install
 echo ""
@@ -127,7 +141,7 @@ mkdir -p "$INSTALL_DIR/$SERVER_TYPE"
 rm -rf "$INSTALL_DIR/$SERVER_TYPE"/*
 
 # Copy new version
-cp -r "$TEMP_DIR"/* "$INSTALL_DIR/$SERVER_TYPE/"
+cp -r "$EXTRACT_DIR"/* "$INSTALL_DIR/$SERVER_TYPE/"
 
 # Create bin directory if it doesn't exist
 mkdir -p "$BIN_DIR"
@@ -136,6 +150,11 @@ mkdir -p "$BIN_DIR"
 EXECUTABLE="$INSTALL_DIR/$SERVER_TYPE/stserver"
 if [ ! -f "$EXECUTABLE" ]; then
     EXECUTABLE="$INSTALL_DIR/$SERVER_TYPE/SharpTools.StdioServer"
+fi
+
+if [ ! -f "$EXECUTABLE" ]; then
+    echo -e "${RED}Error: Could not find server executable in $INSTALL_DIR/$SERVER_TYPE${NC}" >&2
+    exit 1
 fi
 
 # Make executable

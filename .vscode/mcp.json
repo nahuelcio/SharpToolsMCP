@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "SharpTools": {
+      "type": "stdio",
+      "command": "sharptools"
+    }
+  }
+}
