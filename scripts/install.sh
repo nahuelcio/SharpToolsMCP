@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# SharpTools Installer for Linux/macOS
-# Downloads and installs the latest SharpTools release
+# SharpTools Stdio Installer for Linux/macOS
+# Downloads and installs the latest SharpTools Stdio server
 
 set -e
 
@@ -8,7 +8,7 @@ set -e
 REPO="nahuelcio/SharpToolsMCP"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.sharptools}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
-SERVER_TYPE="${SERVER_TYPE:-sse}"  # sse or stdio
+SERVER_TYPE="stdio"
 
 # Colors for output
 RED='\033[0;31m'
@@ -18,17 +18,13 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}========================================${NC}"
-echo -e "${CYAN}SharpTools Installer${NC}"
+echo -e "${CYAN}SharpTools Stdio Installer${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --server)
-            SERVER_TYPE="$2"
-            shift 2
-            ;;
         --install-dir)
             INSTALL_DIR="$2"
             shift 2
@@ -41,7 +37,6 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --server TYPE     Server type: sse or stdio (default: sse)"
             echo "  --install-dir DIR Installation directory (default: ~/.sharptools)"
             echo "  --bin-dir DIR     Bin directory for symlinks (default: ~/.local/bin)"
             echo "  -h, --help        Show this help message"
@@ -83,7 +78,6 @@ detect_platform() {
 
 PLATFORM=$(detect_platform)
 echo "Detected platform: $PLATFORM"
-echo "Server type: $SERVER_TYPE"
 echo ""
 
 # Create temporary directory
@@ -103,8 +97,8 @@ VERSION=$(echo "$LATEST_RELEASE" | grep -o '"tag_name": ".*"' | cut -d'"' -f4)
 echo "Latest version: $VERSION"
 
 # Find the appropriate asset
-echo "Searching for package: sharptools-${SERVER_TYPE}-${PLATFORM}..."
-DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o "\"browser_download_url\": \"[^\"]*${SERVER_TYPE}[^\"]*${PLATFORM}[^\"]*\.tar\.gz\"" | cut -d'"' -f4 | head -1)
+echo "Searching for package: sharptools-stdio-$PLATFORM..."
+DOWNLOAD_URL=$(echo "$LATEST_RELEASE" | grep -o "\"browser_download_url\": \"[^\"]*stdio[^\"]*${PLATFORM}[^\"]*\.tar\.gz\"" | cut -d'"' -f4 | head -1)
 
 if [ -z "$DOWNLOAD_URL" ]; then
     echo -e "${RED}Error: No release asset found for $PLATFORM${NC}" >&2
@@ -124,7 +118,7 @@ tar -xzf "$TEMP_DIR/sharptools.tar.gz" -C "$TEMP_DIR"
 
 # Install
 echo ""
-echo "Installing to: $INSTALL_DIR"
+echo "Installing to: $INSTALL_DIR/$SERVER_TYPE"
 
 # Create install directory
 mkdir -p "$INSTALL_DIR/$SERVER_TYPE"
@@ -141,29 +135,25 @@ mkdir -p "$BIN_DIR"
 # Find executable
 EXECUTABLE="$INSTALL_DIR/$SERVER_TYPE/stserver"
 if [ ! -f "$EXECUTABLE" ]; then
-    # Try alternative names
-    EXECUTABLE="$INSTALL_DIR/$SERVER_TYPE/SharpTools.SseServer"
-    if [ ! -f "$EXECUTABLE" ]; then
-        EXECUTABLE="$INSTALL_DIR/$SERVER_TYPE/SharpTools.StdioServer"
-    fi
+    EXECUTABLE="$INSTALL_DIR/$SERVER_TYPE/SharpTools.StdioServer"
 fi
 
 # Make executable
 chmod +x "$EXECUTABLE"
 
 # Remove old symlink if exists
-rm -f "$BIN_DIR/sharptools-$SERVER_TYPE"
+rm -f "$BIN_DIR/sharptools"
 
 # Create new symlink
-ln -s "$EXECUTABLE" "$BIN_DIR/sharptools-$SERVER_TYPE"
+ln -s "$EXECUTABLE" "$BIN_DIR/sharptools"
 
 echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}Installation Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo "Installed: sharptools-$SERVER_TYPE"
-echo "Location: $BIN_DIR/sharptools-$SERVER_TYPE"
+echo "Installed: sharptools"
+echo "Location: $BIN_DIR/sharptools"
 echo ""
 
 # Check if bin directory is in PATH
@@ -175,13 +165,15 @@ if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
 fi
 
 echo "Usage:"
-echo "  sharptools-$SERVER_TYPE --help"
+echo "  sharptools --help"
 echo ""
-if [ "$SERVER_TYPE" = "sse" ]; then
-    echo "Example:"
-    echo "  sharptools-sse --port 3001"
-else
-    echo "Example (for MCP configuration):"
-    echo "  sharptools-stdio"
-fi
+echo "For MCP configuration (VS Code Copilot):"
+echo '  "mcp": {'
+echo '    "servers": {'
+echo '      "SharpTools": {'
+echo '        "type": "stdio",'
+echo '        "command": "sharptools"'
+echo '      }'
+echo '    }'
+echo '  }'
 echo ""

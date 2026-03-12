@@ -119,20 +119,12 @@ SharpTools exposes a variety of "SharpTool_*" functions via MCP. Here's a brief 
 
 **Linux/macOS:**
 ```bash
-# Install SSE Server
-curl -fsSL https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.sh | bash -s -- --server sse
-
-# Install Stdio Server
-curl -fsSL https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.sh | bash -s -- --server stdio
+curl -fsSL https://raw.githubusercontent.com/nahuelcio/SharpToolsMCP/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell):**
 ```powershell
-# Install SSE Server
-iwr https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.ps1 -useb | iex -ArgumentList @("-ServerType", "sse")
-
-# Install Stdio Server
-iwr https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.ps1 -useb | iex -ArgumentList @("-ServerType", "stdio")
+iwr https://raw.githubusercontent.com/nahuelcio/SharpToolsMCP/main/scripts/install.ps1 -useb | iex
 ```
 
 ### Option 2: Download Pre-built Binaries
@@ -140,25 +132,14 @@ iwr https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.
 Download the latest release from [GitHub Releases](https://github.com/nahuelcio/SharpToolsMCP/releases) and extract to your preferred location.
 
 Available packages:
-- `sharptools-sse-win-x64-*.zip` - SSE Server for Windows
-- `sharptools-sse-linux-x64-*.tar.gz` - SSE Server for Linux
-- `sharptools-sse-osx-x64-*.tar.gz` - SSE Server for macOS
-- `sharptools-stdio-win-x64-*.zip` - Stdio Server for Windows
-- `sharptools-stdio-linux-x64-*.tar.gz` - Stdio Server for Linux
-- `sharptools-stdio-osx-x64-*.tar.gz` - Stdio Server for macOS
+- `sharptools-stdio-win-x64-*.zip` - Windows
+- `sharptools-stdio-linux-x64-*.tar.gz` - Linux
+- `sharptools-stdio-osx-x64-*.tar.gz` - macOS
 
 ### Option 3: Install via .NET Tool
 
 ```bash
-# Install SSE Server
-dotnet tool install -g SharpTools.SseServer
-
-# Install Stdio Server
 dotnet tool install -g SharpTools.StdioServer
-
-# Update
-dotnet tool update -g SharpTools.SseServer
-dotnet tool update -g SharpTools.StdioServer
 ```
 
 ### Option 4: Build from Source

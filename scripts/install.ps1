@@ -1,8 +1,7 @@
-# SharpTools Installer for Windows
-# Downloads and installs the latest SharpTools release
+# SharpTools Stdio Installer for Windows
+# Downloads and installs the latest SharpTools Stdio server
 
 param(
-    [string]$ServerType = "sse",  # sse or stdio
     [string]$InstallDir = "$env:LOCALAPPDATA\SharpTools"
 )
 
@@ -15,13 +14,14 @@ function Write-Color {
 }
 
 Write-Color "========================================" "Cyan"
-Write-Color "SharpTools Installer" "Cyan"
+Write-Color "SharpTools Stdio Installer" "Cyan"
 Write-Color "========================================" "Cyan"
 Write-Host ""
 
 # Configuration
 $Repo = "nahuelcio/SharpToolsMCP"
 $BinDir = "$env:LOCALAPPDATA\Microsoft\WindowsApps"
+$ServerType = "stdio"
 
 # Detect platform
 function Get-Platform {
@@ -29,7 +29,7 @@ function Get-Platform {
     if ($arch -eq 64) {
         return "win-x64"
     } elseif ($arch -eq 32) {
-        return "win-arm64"  # Assuming ARM for 32-bit
+        return "win-arm64"
     } else {
         throw "Unsupported architecture: $arch"
     }
@@ -37,7 +37,6 @@ function Get-Platform {
 
 $Platform = Get-Platform
 Write-Host "Detected platform: $Platform"
-Write-Host "Server type: $ServerType"
 Write-Host ""
 
 # Create temporary directory
@@ -64,8 +63,7 @@ $Version = $LatestRelease.tag_name
 Write-Host "Latest version: $Version" -ForegroundColor Green
 
 # Find the appropriate asset
-$AssetName = "sharptools-$ServerType-$Platform"
-$Asset = $LatestRelease.assets | Where-Object { $_.name -like "*$Platform*.zip" } | Select-Object -First 1
+$Asset = $LatestRelease.assets | Where-Object { $_.name -like "*stdio*$Platform*.zip" } | Select-Object -First 1
 
 if (-not $Asset) {
     Write-Host "Error: No release asset found for $Platform" -ForegroundColor Red
@@ -88,7 +86,7 @@ Expand-Archive -Path $ZipPath -DestinationPath $TempDir -Force
 
 # Install
 Write-Host ""
-Write-Host "Installing to: $InstallDir" -ForegroundColor Yellow
+Write-Host "Installing to: $InstallDir\$ServerType" -ForegroundColor Yellow
 
 # Create install directory
 if (-not (Test-Path $InstallDir)) {
@@ -105,20 +103,15 @@ New-Item -ItemType Directory -Path $ServerInstallDir | Out-Null
 # Copy new version
 Copy-Item -Path "$TempDir\*" -Destination $ServerInstallDir -Recurse -Force
 
-# Create symlink in WindowsApps folder (requires developer mode or admin)
+# Find executable
 $Executable = Join-Path $ServerInstallDir "stserver.exe"
-$LinkPath = Join-Path $BinDir "sharptools-$ServerType.exe"
-
-# Make executable (ensure .exe extension)
 if (-not (Test-Path $Executable)) {
-    # Try alternative name
-    $Executable = Join-Path $ServerInstallDir "SharpTools.SseServer.exe"
-    if (-not (Test-Path $Executable)) {
-        $Executable = Join-Path $ServerInstallDir "SharpTools.StdioServer.exe"
-    }
+    $Executable = Join-Path $ServerInstallDir "SharpTools.StdioServer.exe"
 }
 
-# Create symlink (may require admin)
+# Create symlink in WindowsApps folder (requires developer mode or admin)
+$LinkPath = Join-Path $BinDir "sharptools.exe"
+
 try {
     if (Test-Path $LinkPath) {
         Remove-Item $LinkPath -Force
@@ -134,15 +127,19 @@ Write-Color "========================================" "Green"
 Write-Color "Installation Complete!" "Green"
 Write-Color "========================================" "Green"
 Write-Host ""
-Write-Host "Installed: sharptools-$ServerType"
+Write-Host "Installed: sharptools"
 Write-Host "Location: $Executable"
 Write-Host ""
 Write-Host "Usage:" -ForegroundColor Cyan
-Write-Host "  sharptools-$ServerType --help"
+Write-Host "  sharptools --help"
 Write-Host ""
-Write-Host "For SSE server:" -ForegroundColor Cyan
-Write-Host "  sharptools-sse --port 3001"
-Write-Host ""
-Write-Host "For Stdio server (MCP):" -ForegroundColor Cyan
-Write-Host "  sharptools-stdio"
+Write-Host "For MCP configuration (VS Code Copilot):" -ForegroundColor Cyan
+Write-Host '  "mcp": {'
+Write-Host '    "servers": {'
+Write-Host '      "SharpTools": {'
+Write-Host '        "type": "stdio",'
+Write-Host '        "command": "sharptools"'
+Write-Host '      }'
+Write-Host '    }'
+Write-Host '  }'
 Write-Host ""

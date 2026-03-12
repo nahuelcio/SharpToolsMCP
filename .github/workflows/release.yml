@@ -56,21 +56,6 @@ jobs:
       - name: Build Solution
         run: dotnet build SharpTools.sln -c Release
 
-      - name: Publish SSE Server
-        run: |
-          IFS=',' read -ra RUNTIMES <<< "${{ matrix.runtimes }}"
-          for runtime in "${RUNTIMES[@]}"; do
-            echo "Publishing SSE Server for $runtime..."
-            dotnet publish SharpTools.SseServer/SharpTools.SseServer.csproj \
-              -c Release \
-              --runtime $runtime \
-              --self-contained true \
-              --output publish/sse-$runtime \
-              --property:PublishSingleFile=true \
-              --property:PublishTrimmed=false
-          done
-        shell: bash
-
       - name: Publish Stdio Server
         run: |
           IFS=',' read -ra RUNTIMES <<< "${{ matrix.runtimes }}"
@@ -92,21 +77,19 @@ jobs:
           mkdir -p packages
           VERSION="${{ steps.version.outputs.version }}"
           
-          for server in sse stdio; do
-            IFS=',' read -ra RUNTIMES <<< "${{ matrix.runtimes }}"
-            for runtime in "${RUNTIMES[@]}"; do
-              src_dir="publish/$server-$runtime"
-              if [ -d "$src_dir" ]; then
-                if [[ "$runtime" == win-* ]]; then
-                  pkg_name="sharptools-$server-$runtime-$VERSION.zip"
-                  (cd "$src_dir" && zip -r "../../packages/$pkg_name" .)
-                else
-                  pkg_name="sharptools-$server-$runtime-$VERSION.tar.gz"
-                  tar -czf "packages/$pkg_name" -C "$src_dir" .
-                fi
-                echo "Created: $pkg_name"
+          IFS=',' read -ra RUNTIMES <<< "${{ matrix.runtimes }}"
+          for runtime in "${RUNTIMES[@]}"; do
+            src_dir="publish/stdio-$runtime"
+            if [ -d "$src_dir" ]; then
+              if [[ "$runtime" == win-* ]]; then
+                pkg_name="sharptools-stdio-$runtime-$VERSION.zip"
+                (cd "$src_dir" && zip -r "../../packages/$pkg_name" .)
+              else
+                pkg_name="sharptools-stdio-$runtime-$VERSION.tar.gz"
+                tar -czf "packages/$pkg_name" -C "$src_dir" .
               fi
-            done
+              echo "Created: $pkg_name"
+            fi
           done
         shell: bash
 
@@ -116,18 +99,15 @@ jobs:
           New-Item -ItemType Directory -Path packages -Force
           $VERSION = "${{ steps.version.outputs.version }}"
           
-          $servers = @("sse", "stdio")
           $runtimes = "${{ matrix.runtimes }}".Split(',')
           
-          foreach ($server in $servers) {
-            foreach ($runtime in $runtimes) {
-              $srcDir = "publish/$server-$runtime"
-              if (Test-Path $srcDir) {
-                $pkgName = "sharptools-$server-$runtime-$VERSION.zip"
-                $zipPath = "packages/$pkgName"
-                Compress-Archive -Path "$srcDir\*" -DestinationPath $zipPath -Force
-                Write-Host "Created: $pkgName"
-              }
+          foreach ($runtime in $runtimes) {
+            $srcDir = "publish/stdio-$runtime"
+            if (Test-Path $srcDir) {
+              $pkgName = "sharptools-stdio-$runtime-$VERSION.zip"
+              $zipPath = "packages/$pkgName"
+              Compress-Archive -Path "$srcDir\*" -DestinationPath $zipPath -Force
+              Write-Host "Created: $pkgName"
             }
           }
         shell: pwsh
@@ -185,13 +165,6 @@ jobs:
           # Remove 'v' prefix for NuGet
           VERSION="${VERSION#v}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Pack SSE Server
-        run: |
-          dotnet pack SharpTools.SseServer/SharpTools.SseServer.csproj \
-            -c Release \
-            -o nupkgs \
-            /p:PackageVersion=${{ steps.version.outputs.version }}
 
       - name: Pack Stdio Server
         run: |
