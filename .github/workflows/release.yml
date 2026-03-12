@@ -21,14 +21,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
         include:
           - os: ubuntu-latest
             runtimes: linux-x64,linux-arm64
           - os: windows-latest
             runtimes: win-x64,win-arm64
-          - os: macos-latest
-            runtimes: osx-x64,osx-arm64
+          # - os: macos-latest
+          #   runtimes: osx-x64,osx-arm64
 
     steps:
       - name: Checkout

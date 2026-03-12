@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.HttpLogging;
 using Serilog;
 using ModelContextProtocol.Protocol;
 using System.Reflection;
+using Microsoft.Build.Locator;
 namespace SharpTools.SseServer;
 
 using SharpTools.Tools.Services;
@@ -26,6 +27,7 @@ public class Program {
     public const string ApplicationVersion = "0.0.1";
     public const string LogOutputTemplate = "[{Timestamp:HH:mm:ss} {Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}";
     public static async Task<int> Main(string[] args) {
+        RegisterMsBuild();
         // Ensure tool assemblies are loaded for MCP SDK's WithToolsFromAssembly
         _ = typeof(SolutionTools);
         _ = typeof(AnalysisTools);
@@ -233,6 +235,30 @@ public class Program {
         } finally {
             Log.Information("{AppName} shutting down.", ApplicationName);
             await Log.CloseAndFlushAsync();
+        }
+    }
+
+    private static void RegisterMsBuild() {
+        if (MSBuildLocator.IsRegistered) {
+            return;
+        }
+
+        var instances = MSBuildLocator.QueryVisualStudioInstances().ToArray();
+        if (instances.Length == 0) {
+            throw new InvalidOperationException("No MSBuild instance was found. Install a compatible .NET SDK/MSBuild toolchain before starting SharpTools.");
+        }
+
+        var selectedInstance = instances
+            .OrderByDescending(i => i.Version)
+            .First();
+
+        MSBuildLocator.RegisterInstance(selectedInstance);
+
+        var buildHostNetcorePath = Path.Combine(AppContext.BaseDirectory, "BuildHost-netcore", "Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll");
+        if (!File.Exists(buildHostNetcorePath)) {
+            throw new FileNotFoundException(
+                $"Roslyn build host was not found at '{buildHostNetcorePath}'. Reinstall SharpTools from a non-single-file publish so the BuildHost-netcore folder is deployed next to the executable.",
+                buildHostNetcorePath);
         }
     }
 }
