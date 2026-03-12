@@ -178,8 +178,14 @@ jobs:
             /p:PackageVersion=${{ steps.version.outputs.version }}
 
       - name: Publish to NuGet
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          dotnet nuget push nupkgs/*.nupkg \
-            --api-key ${{ secrets.NUGET_API_KEY }} \
-            --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+          if [ -n "$NUGET_API_KEY" ]; then
+            dotnet nuget push nupkgs/*.nupkg \
+              --api-key "$NUGET_API_KEY" \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          else
+            echo "NUGET_API_KEY not configured, skipping NuGet publish"
+          fi

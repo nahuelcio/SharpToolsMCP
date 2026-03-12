@@ -5,7 +5,7 @@
 set -e
 
 # Configuration
-REPO="workflow/SharpToolsMCP"
+REPO="nahuelcio/SharpToolsMCP"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.sharptools}"
 BIN_DIR="${BIN_DIR:-$HOME/.local/bin}"
 SERVER_TYPE="${SERVER_TYPE:-sse}"  # sse or stdio

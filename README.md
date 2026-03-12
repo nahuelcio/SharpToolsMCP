@@ -120,24 +120,24 @@ SharpTools exposes a variety of "SharpTool_*" functions via MCP. Here's a brief 
 **Linux/macOS:**
 ```bash
 # Install SSE Server
-curl -fsSL https://github.com/workflow/SharpToolsMCP/releases/latest/download/install.sh | bash -s -- --server sse
+curl -fsSL https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.sh | bash -s -- --server sse
 
 # Install Stdio Server
-curl -fsSL https://github.com/workflow/SharpToolsMCP/releases/latest/download/install.sh | bash -s -- --server stdio
+curl -fsSL https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.sh | bash -s -- --server stdio
 ```
 
 **Windows (PowerShell):**
 ```powershell
 # Install SSE Server
-iwr https://github.com/workflow/SharpToolsMCP/releases/latest/download/install.ps1 -useb | iex -ArgumentList @("-ServerType", "sse")
+iwr https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.ps1 -useb | iex -ArgumentList @("-ServerType", "sse")
 
 # Install Stdio Server
-iwr https://github.com/workflow/SharpToolsMCP/releases/latest/download/install.ps1 -useb | iex -ArgumentList @("-ServerType", "stdio")
+iwr https://github.com/nahuelcio/SharpToolsMCP/releases/latest/download/install.ps1 -useb | iex -ArgumentList @("-ServerType", "stdio")
 ```
 
 ### Option 2: Download Pre-built Binaries
 
-Download the latest release from [GitHub Releases](https://github.com/workflow/SharpToolsMCP/releases) and extract to your preferred location.
+Download the latest release from [GitHub Releases](https://github.com/nahuelcio/SharpToolsMCP/releases) and extract to your preferred location.
 
 Available packages:
 - `sharptools-sse-win-x64-*.zip` - SSE Server for Windows
@@ -165,7 +165,7 @@ dotnet tool update -g SharpTools.StdioServer
 
 ```bash
 # Clone the repository
-git clone https://github.com/workflow/SharpToolsMCP.git
+git clone https://github.com/nahuelcio/SharpToolsMCP.git
 cd SharpToolsMCP
 
 # Build the entire solution

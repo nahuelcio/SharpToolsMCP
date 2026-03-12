@@ -20,7 +20,7 @@ Write-Color "========================================" "Cyan"
 Write-Host ""
 
 # Configuration
-$Repo = "workflow/SharpToolsMCP"
+$Repo = "nahuelcio/SharpToolsMCP"
 $BinDir = "$env:LOCALAPPDATA\Microsoft\WindowsApps"
 
 # Detect platform
