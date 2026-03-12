@@ -593,28 +593,6 @@ public static class ModificationTools {
             }
         }, logger, nameof(ReplaceAllReferences), cancellationToken);
     }
-    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(Undo), Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
-    [Description($"Reverts the last applied change to the solution. You can undo all consecutive changes you have made. Returns a diff of the change that was undone.")]
-    public static async Task<string> Undo(
-        ISolutionManager solutionManager,
-        ICodeModificationService modificationService,
-        ILogger<ModificationToolsLogCategory> logger,
-        CancellationToken cancellationToken) {
-
-        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
-            ToolHelpers.EnsureSolutionLoadedWithDetails(solutionManager, logger, nameof(Undo));
-            logger.LogInformation("Executing '{UndoLastChange}'", nameof(Undo));
-
-            var (success, message) = await modificationService.UndoLastChangeAsync(cancellationToken);
-            if (!success) {
-                logger.LogWarning("Undo operation failed: {Message}", message);
-                throw new McpException($"Failed to undo the last change. {message}");
-            }
-            logger.LogInformation("Undo operation succeeded");
-            return message;
-
-        }, logger, nameof(Undo), cancellationToken);
-    }
     [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(FindAndReplace), Idempotent = false, Destructive = true, OpenWorld = false, ReadOnly = false)]
     [Description("Every developer's favorite. Use this for all small edits (code tweaks, usings, namespaces, interface implementations, attributes, etc.) instead of rewriting large members or types.")]
     public static async Task<string> FindAndReplace(
@@ -759,17 +737,6 @@ public static class ModificationTools {
                 // Apply the changes to code files
                 if (changedDocuments.Count > 0) {
                     await modificationService.ApplyChangesAsync(newSolution, cancellationToken, finalCommitMessage, nonCodeFilesModified);
-                }
-
-                // Commit non-code files (if we only modified non-code files)
-                if (nonCodeFilesModified.Count > 0 && changedDocuments.Count == 0) {
-                    // Get solution path
-                    var solutionPath = originalSolution.FilePath;
-                    if (string.IsNullOrEmpty(solutionPath)) {
-                        logger.LogDebug("Solution path is not available, skipping Git operations for non-code files");
-                    } else {
-                        await documentOperations.ProcessGitOperationsAsync(nonCodeFilesModified, cancellationToken, finalCommitMessage);
-                    }
                 }
 
                 // Check for compilation errors in changed code documents

@@ -45,17 +45,11 @@ public static class Program {
             Description = "Build configuration to use when loading the solution (Debug, Release, etc.)."
         };
 
-        var disableGitOption = new Option<bool>("--disable-git") {
-            Description = "Disable Git integration.",
-            DefaultValueFactory = x => false
-        };
-
         var rootCommand = new RootCommand("SharpTools MCP StdIO Server"){
             logDirOption,
             logLevelOption,
             loadSolutionOption,
-            buildConfigurationOption,
-            disableGitOption
+            buildConfigurationOption
         };
 
         ParseResult? parseResult = rootCommand.Parse(args);
@@ -68,8 +62,6 @@ public static class Program {
         Serilog.Events.LogEventLevel minimumLogLevel = parseResult.GetValue(logLevelOption);
         string? solutionPath = parseResult.GetValue(loadSolutionOption);
         string? buildConfiguration = parseResult.GetValue(buildConfigurationOption)!;
-        bool disableGit = parseResult.GetValue(disableGitOption);
-
         var loggerConfiguration = new LoggerConfiguration()
             .MinimumLevel.Is(minimumLogLevel)
             .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
@@ -110,10 +102,6 @@ public static class Program {
 
         Log.Logger = loggerConfiguration.CreateBootstrapLogger();
 
-        if (disableGit) {
-            Log.Information("Git integration is disabled.");
-        }
-
         if (!string.IsNullOrEmpty(buildConfiguration)) {
             Log.Information("Using build configuration: {BuildConfiguration}", buildConfiguration);
         }
@@ -121,7 +109,7 @@ public static class Program {
         var builder = Host.CreateApplicationBuilder(args);
         builder.Logging.ClearProviders();
         builder.Logging.AddSerilog();
-        builder.Services.WithSharpToolsServices(!disableGit, buildConfiguration);
+        builder.Services.WithSharpToolsServices(buildConfiguration);
 
         builder.Services
             .AddMcpServer(options => {

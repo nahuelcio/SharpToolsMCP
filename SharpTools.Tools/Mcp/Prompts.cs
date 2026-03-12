@@ -25,7 +25,6 @@ Exclusively use `SharpTool`s for ALL reading and writing operations.
 Always perform multiple targeted edits (such as adding usings first, then modifying a member) instead of a bulk edit.
 Prefer `{ToolHelpers.SharpToolPrefix}{nameof(ModificationTools.OverwriteMember)}` or `{ToolHelpers.SharpToolPrefix}{nameof(ModificationTools.AddMember)}` over `{ToolHelpers.SharpToolPrefix}{nameof(DocumentTools.OverwriteRoslynDocument)}` unless you *must* write the whole file.
 For more complex edit operations, consider `{ToolHelpers.SharpToolPrefix}{nameof(ModificationTools.RenameSymbol)}` and ``{ToolHelpers.SharpToolPrefix}{nameof(ModificationTools.ReplaceAllReferences)}`
-If you make a mistake or want to start over, you can `{ToolHelpers.SharpToolPrefix}{nameof(ModificationTools.Undo)}`.
 </editFileInstructions>
 
 <task>

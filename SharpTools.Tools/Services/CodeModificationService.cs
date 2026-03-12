@@ -20,15 +20,12 @@ namespace SharpTools.Tools.Services;
 
 public class CodeModificationService : ICodeModificationService {
     private readonly ISolutionManager _solutionManager;
-    private readonly IGitService _gitService;
     private readonly ILogger<CodeModificationService> _logger;
 
     public CodeModificationService(
         ISolutionManager solutionManager,
-        IGitService gitService,
         ILogger<CodeModificationService> logger) {
         _solutionManager = solutionManager ?? throw new ArgumentNullException(nameof(solutionManager));
-        _gitService = gitService ?? throw new ArgumentNullException(nameof(gitService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -429,13 +426,9 @@ public class CodeModificationService : ICodeModificationService {
         }
 
         var originalSolution = _solutionManager.CurrentSolution ?? throw new InvalidOperationException("Original solution is null before applying changes.");
-        var solutionPath = originalSolution.FilePath ?? "";
 
         var solutionChanges = newSolution.GetChanges(originalSolution);
         var finalSolutionToApply = newSolution;
-
-        // Collect changed file paths for git operations - include both changed and new documents
-        var changedFilePaths = new List<string>();
 
         foreach (var projectChange in solutionChanges.GetProjectChanges()) {
             // Handle changed documents
@@ -446,9 +439,6 @@ public class CodeModificationService : ICodeModificationService {
                     var formattedDocument = await FormatDocumentAsync(documentToFormat, cancellationToken);
                     finalSolutionToApply = formattedDocument.Project.Solution;
 
-                    if (!string.IsNullOrEmpty(documentToFormat.FilePath)) {
-                        changedFilePaths.Add(documentToFormat.FilePath);
-                    }
                 }
             }
 
@@ -460,19 +450,6 @@ public class CodeModificationService : ICodeModificationService {
                     var formattedDocument = await FormatDocumentAsync(addedDocument, cancellationToken);
                     finalSolutionToApply = formattedDocument.Project.Solution;
 
-                    if (!string.IsNullOrEmpty(addedDocument.FilePath)) {
-                        changedFilePaths.Add(addedDocument.FilePath);
-                        _logger.LogInformation("Added new document for git tracking: {DocumentPath}", addedDocument.FilePath);
-                    }
-                }
-            }
-
-            // Handle removed documents
-            foreach (var removedDocumentId in projectChange.GetRemovedDocuments()) {
-                var removedDocument = originalSolution.GetDocument(removedDocumentId);
-                if (removedDocument != null && !string.IsNullOrEmpty(removedDocument.FilePath)) {
-                    changedFilePaths.Add(removedDocument.FilePath);
-                    _logger.LogInformation("Marked removed document for git tracking: {DocumentPath}", removedDocument.FilePath);
                 }
             }
         }
@@ -483,27 +460,10 @@ public class CodeModificationService : ICodeModificationService {
 
         if (workspace.TryApplyChanges(finalSolutionToApply)) {
             _logger.LogInformation("Changes applied successfully to the workspace.");
-
-            // If additional file paths are provided, add them to the changed file paths
-            if (additionalFilePaths != null) {
-                changedFilePaths.AddRange(additionalFilePaths.Where(fp => !string.IsNullOrEmpty(fp) && File.Exists(fp)));
-            }
-            // Git operations after successful changes
-            await ProcessGitOperationsAsync(solutionPath, changedFilePaths, commitMessage, cancellationToken);
-
             _solutionManager.RefreshCurrentSolution();
         } else {
             _logger.LogError("Failed to apply changes to the workspace.");
             throw new InvalidOperationException("Failed to apply changes to the workspace. Files might have been modified externally.");
         }
-    }
-    private async Task ProcessGitOperationsAsync(string solutionPath, List<string> changedFilePaths, string commitMessage, CancellationToken cancellationToken) {
-        await Task.CompletedTask;
-        _logger.LogDebug("Automatic Git operations are disabled.");
-    }
-    public async Task<(bool success, string message)> UndoLastChangeAsync(CancellationToken cancellationToken) {
-        await Task.CompletedTask;
-        _logger.LogInformation("Undo is disabled because automatic Git integration has been removed.");
-        return (false, "Undo is no longer supported. SharpTools no longer creates branches or automatic Git commits.");
     }
 }

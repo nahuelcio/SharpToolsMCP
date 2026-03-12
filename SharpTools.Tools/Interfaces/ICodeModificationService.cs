@@ -8,6 +8,5 @@ public interface ICodeModificationService {
     Task<Document> FormatDocumentAsync(Document document, CancellationToken cancellationToken);
     Task ApplyChangesAsync(Solution newSolution, CancellationToken cancellationToken, string commitMessage, IEnumerable<string>? additionalFilePaths = null);
 
-    Task<(bool success, string message)> UndoLastChangeAsync(CancellationToken cancellationToken);
     Task<Solution> FindAndReplaceAsync(string targetString, string regexPattern, string replacementText, CancellationToken cancellationToken, RegexOptions options = RegexOptions.Multiline);
 }

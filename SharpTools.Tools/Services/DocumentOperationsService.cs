@@ -12,7 +12,6 @@ namespace SharpTools.Tools.Services;
 public class DocumentOperationsService : IDocumentOperationsService {
     private readonly ISolutionManager _solutionManager;
     private readonly ICodeModificationService _modificationService;
-    private readonly IGitService _gitService;
     private readonly ILogger<DocumentOperationsService> _logger;
 
     // Extensions for common code file types that can be formatted
@@ -28,11 +27,9 @@ public class DocumentOperationsService : IDocumentOperationsService {
     public DocumentOperationsService(
         ISolutionManager solutionManager,
         ICodeModificationService modificationService,
-        IGitService gitService,
         ILogger<DocumentOperationsService> logger) {
         _solutionManager = solutionManager;
         _modificationService = modificationService;
-        _gitService = gitService;
         _logger = logger;
     }
 
@@ -89,11 +86,6 @@ public class DocumentOperationsService : IDocumentOperationsService {
         var bestProject = FindMostAppropriateProject(filePath);
         if (!pathInfo.IsFormattable || bestProject is null || string.IsNullOrWhiteSpace(bestProject.FilePath)) {
             _logger.LogWarning("Added non-code file: {FilePath}", filePath);
-            if (string.IsNullOrEmpty(commitMessage)) {
-                return true; // No commit message provided, don't commit, just return
-            }
-            //just commit the file
-            await ProcessGitOperationsAsync([filePath], cancellationToken, commitMessage);
             return true;
         }
 
@@ -116,9 +108,9 @@ public class DocumentOperationsService : IDocumentOperationsService {
             _logger.LogWarning("Document not found in solution: {FilePath}", filePath);
             return false;
         }
-        // If it's a code file, try to format it, which will also commit it
+        // If it's a code file, try to format it
         if (await TryFormatAndCommitFileAsync(document, cancellationToken, commitMessage)) {
-            _logger.LogInformation("File formatted and committed: {FilePath}", filePath);
+            _logger.LogInformation("File formatted successfully: {FilePath}", filePath);
             return true;
         } else {
             _logger.LogWarning("Failed to format file: {FilePath}", filePath);
@@ -361,7 +353,7 @@ public class DocumentOperationsService : IDocumentOperationsService {
     private async Task<bool> TryFormatAndCommitFileAsync(Document document, CancellationToken cancellationToken, string commitMessage) {
         try {
             var formattedDocument = await _modificationService.FormatDocumentAsync(document, cancellationToken);
-            // Apply the formatting changes with the commit message
+            // Apply the formatting changes
             var newSolution = formattedDocument.Project.Solution;
             await _modificationService.ApplyChangesAsync(newSolution, cancellationToken, commitMessage);
 
@@ -380,9 +372,5 @@ public class DocumentOperationsService : IDocumentOperationsService {
         }
 
         return i > 0 ? line.Substring(i) : line;
-    }
-    public async Task ProcessGitOperationsAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken, string commitMessage) {
-        await Task.CompletedTask;
-        _logger.LogDebug("Automatic Git operations are disabled.");
     }
 }

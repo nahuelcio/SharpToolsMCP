@@ -21,18 +21,9 @@ public interface IDocumentOperationsService {
     /// <param name="content">The content to write to the file</param>
     /// <param name="overwriteIfExists">Whether to overwrite the file if it already exists</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <param name="commitMessage">The commit message to use if the file is in a Git repository</param>
+    /// <param name="commitMessage">A caller-supplied change summary string.</param>
     /// <returns>True if the file was created, false if it already exists and overwrite was not allowed</returns>
     Task<bool> WriteFileAsync(string filePath, string content, bool overwriteIfExists, CancellationToken cancellationToken, string commitMessage);
-
-    /// <summary>
-    /// Processes Git operations for multiple file paths
-    /// </summary>
-    /// <param name="filePaths">The file paths to process</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <param name="commitMessage">The commit message to use</param>
-    /// <returns>A Task representing the asynchronous operation</returns>
-    Task ProcessGitOperationsAsync(IEnumerable<string> filePaths, CancellationToken cancellationToken, string commitMessage);
 
     /// <summary>
     /// Checks if a file exists at the specified path
