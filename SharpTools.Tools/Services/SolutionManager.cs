@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Xml.Linq;
 using Microsoft.Build.Locator;
@@ -63,9 +64,9 @@ public sealed class SolutionManager : ISolutionManager {
         }
 
         try {
-            var msbuildPath = FindMsBuildPath();
+            var (msbuildPath, discoverySummary) = FindMsBuildPath();
             if (string.IsNullOrWhiteSpace(msbuildPath)) {
-                throw new InvalidOperationException("Could not locate an MSBuild SDK directory.");
+                throw new InvalidOperationException(BuildMsBuildNotFoundMessage(discoverySummary));
             }
 
             _logger.LogInformation("Registering MSBuild from {MsBuildPath}", msbuildPath);
@@ -82,43 +83,251 @@ public sealed class SolutionManager : ISolutionManager {
             throw;
         }
     }
-    private static string? FindMsBuildPath() {
-        var candidateRoots = new List<string>();
+    private static (string? MsBuildPath, string DiscoverySummary) FindMsBuildPath() {
+        var discoveryNotes = new List<string>();
 
         var overridePath = Environment.GetEnvironmentVariable("SHARPTOOLS_MSBUILD_PATH");
-        if (!string.IsNullOrWhiteSpace(overridePath) && Directory.Exists(overridePath)) {
-            return overridePath;
+        if (!string.IsNullOrWhiteSpace(overridePath)) {
+            if (TryResolveMsBuildPath(overridePath, out var resolvedOverridePath)) {
+                discoveryNotes.Add($"SHARPTOOLS_MSBUILD_PATH resolved to '{resolvedOverridePath}'.");
+                return (resolvedOverridePath, string.Join(" ", discoveryNotes));
+            }
+
+            discoveryNotes.Add($"SHARPTOOLS_MSBUILD_PATH was set to '{overridePath}' but did not resolve to a directory containing MSBuild.dll.");
         }
+
+        if (TryGetMsBuildPathFromLocator(out var locatorPath, out var locatorNote)) {
+            discoveryNotes.Add(locatorNote);
+            return (locatorPath, string.Join(" ", discoveryNotes));
+        }
+
+        if (!string.IsNullOrWhiteSpace(locatorNote)) {
+            discoveryNotes.Add(locatorNote);
+        }
+
+        if (TryGetMsBuildPathFromDotnetCli(out var dotnetCliPath, out var dotnetCliNote)) {
+            discoveryNotes.Add(dotnetCliNote);
+            return (dotnetCliPath, string.Join(" ", discoveryNotes));
+        }
+
+        if (!string.IsNullOrWhiteSpace(dotnetCliNote)) {
+            discoveryNotes.Add(dotnetCliNote);
+        }
+
+        var candidateRoots = GetCandidateDotnetRoots().ToList();
+        discoveryNotes.Add($"Candidate DOTNET roots: {string.Join(", ", candidateRoots)}.");
+
+        foreach (var root in candidateRoots) {
+            if (TryResolveMsBuildPath(root, out var resolvedPath)) {
+                discoveryNotes.Add($"Resolved MSBuild from root '{root}' to '{resolvedPath}'.");
+                return (resolvedPath, string.Join(" ", discoveryNotes));
+            }
+        }
+
+        return (null, string.Join(" ", discoveryNotes));
+    }
+    private static string BuildMsBuildNotFoundMessage(string discoverySummary) {
+        return "Could not locate an MSBuild SDK directory. Install the .NET SDK used by the target solution and make sure `dotnet --list-sdks` returns at least one SDK. " +
+            "If your SDK is in a custom location, set SHARPTOOLS_MSBUILD_PATH to the SDK folder (or root folder containing an sdk subfolder) that contains MSBuild.dll. " +
+            $"Discovery details: {discoverySummary}";
+    }
+    private static bool TryResolveMsBuildPath(string candidatePath, [NotNullWhen(true)] out string? resolvedPath) {
+        resolvedPath = null;
+        if (string.IsNullOrWhiteSpace(candidatePath) || !Directory.Exists(candidatePath)) {
+            return false;
+        }
+
+        var normalizedPath = Path.GetFullPath(candidatePath);
+        if (File.Exists(Path.Combine(normalizedPath, "MSBuild.dll"))) {
+            resolvedPath = normalizedPath;
+            return true;
+        }
+
+        var bestSdkPath = FindBestSdkPath(Path.Combine(normalizedPath, "sdk"));
+        if (!string.IsNullOrWhiteSpace(bestSdkPath)) {
+            resolvedPath = bestSdkPath;
+            return true;
+        }
+
+        return false;
+    }
+    private static bool TryGetMsBuildPathFromLocator([NotNullWhen(true)] out string? msbuildPath, out string discoveryNote) {
+        msbuildPath = null;
+        discoveryNote = string.Empty;
+
+        try {
+            var bestInstance = MSBuildLocator.QueryVisualStudioInstances()
+                .OrderByDescending(instance => instance.Version)
+                .FirstOrDefault();
+
+            if (bestInstance == null) {
+                discoveryNote = "MSBuildLocator query did not return any Visual Studio/.NET SDK instance.";
+                return false;
+            }
+
+            if (TryResolveMsBuildPath(bestInstance.MSBuildPath, out msbuildPath)) {
+                discoveryNote = $"MSBuildLocator selected '{bestInstance.Name}' ({bestInstance.Version}) at '{msbuildPath}'.";
+                return true;
+            }
+
+            discoveryNote = $"MSBuildLocator selected '{bestInstance.Name}' ({bestInstance.Version}) at '{bestInstance.MSBuildPath}', but the path did not contain MSBuild.dll.";
+            return false;
+        } catch (Exception ex) {
+            discoveryNote = $"MSBuildLocator query failed: {ex.Message}";
+            return false;
+        }
+    }
+    private static bool TryGetMsBuildPathFromDotnetCli([NotNullWhen(true)] out string? msbuildPath, out string discoveryNote) {
+        msbuildPath = null;
+        discoveryNote = string.Empty;
+
+        if (!TryRunProcess("dotnet", "--list-sdks", out var stdout, out var stderr, out var exitCode)) {
+            discoveryNote = "Failed to execute `dotnet --list-sdks`.";
+            return false;
+        }
+
+        if (exitCode != 0) {
+            var errorSuffix = string.IsNullOrWhiteSpace(stderr) ? string.Empty : $" stderr: {stderr.Trim()}";
+            discoveryNote = $"`dotnet --list-sdks` exited with code {exitCode}.{errorSuffix}";
+            return false;
+        }
+
+        var sdkCandidates = new List<(Version Version, string Path)>();
+        foreach (var line in stdout.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)) {
+            if (!TryParseDotnetSdkLine(line, out var version, out var sdkPath)) {
+                continue;
+            }
+
+            if (TryResolveMsBuildPath(sdkPath, out var resolvedPath)) {
+                sdkCandidates.Add((version, resolvedPath));
+            }
+        }
+
+        if (sdkCandidates.Count == 0) {
+            discoveryNote = "`dotnet --list-sdks` returned no usable SDK path with MSBuild.dll.";
+            return false;
+        }
+
+        var bestCandidate = sdkCandidates
+            .OrderByDescending(candidate => candidate.Version)
+            .First();
+        msbuildPath = bestCandidate.Path;
+        discoveryNote = $"Resolved MSBuild via `dotnet --list-sdks` to '{msbuildPath}'.";
+        return true;
+    }
+    private static bool TryParseDotnetSdkLine(string line, out Version version, [NotNullWhen(true)] out string? sdkPath) {
+        version = new Version(0, 0);
+        sdkPath = null;
+
+        if (string.IsNullOrWhiteSpace(line)) {
+            return false;
+        }
+
+        var openBracketIndex = line.LastIndexOf('[');
+        var closeBracketIndex = line.LastIndexOf(']');
+        if (openBracketIndex < 0 || closeBracketIndex <= openBracketIndex) {
+            return false;
+        }
+
+        var sdkVersionText = line.Substring(0, openBracketIndex).Trim();
+        var sdkRootPath = line.Substring(openBracketIndex + 1, closeBracketIndex - openBracketIndex - 1).Trim();
+        if (string.IsNullOrWhiteSpace(sdkVersionText) || string.IsNullOrWhiteSpace(sdkRootPath)) {
+            return false;
+        }
+
+        version = ParseVersion(sdkVersionText);
+        sdkPath = Path.Combine(sdkRootPath, sdkVersionText);
+        return true;
+    }
+    private static bool TryRunProcess(
+        string fileName,
+        string arguments,
+        out string stdout,
+        out string stderr,
+        out int exitCode) {
+        stdout = string.Empty;
+        stderr = string.Empty;
+        exitCode = -1;
+
+        try {
+            using var process = new Process {
+                StartInfo = new ProcessStartInfo {
+                    FileName = fileName,
+                    Arguments = arguments,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                }
+            };
+
+            if (!process.Start()) {
+                return false;
+            }
+
+            stdout = process.StandardOutput.ReadToEnd();
+            stderr = process.StandardError.ReadToEnd();
+
+            if (!process.WaitForExit(milliseconds: 5000)) {
+                try {
+                    process.Kill(entireProcessTree: true);
+                } catch {
+                    // Best effort kill when timeout occurs.
+                }
+                return false;
+            }
+
+            exitCode = process.ExitCode;
+            return true;
+        } catch {
+            return false;
+        }
+    }
+    private static IEnumerable<string> GetCandidateDotnetRoots() {
+        var roots = new List<string>();
 
         var dotnetRoot = Environment.GetEnvironmentVariable("DOTNET_ROOT");
         if (!string.IsNullOrWhiteSpace(dotnetRoot)) {
-            candidateRoots.Add(dotnetRoot);
+            roots.Add(dotnetRoot);
         }
 
         var dotnetRootX64 = Environment.GetEnvironmentVariable("DOTNET_ROOT_X64");
         if (!string.IsNullOrWhiteSpace(dotnetRootX64)) {
-            candidateRoots.Add(dotnetRootX64);
+            roots.Add(dotnetRootX64);
+        }
+
+        var dotnetHostPath = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH");
+        if (!string.IsNullOrWhiteSpace(dotnetHostPath)) {
+            var hostDirectory = Path.GetDirectoryName(dotnetHostPath);
+            if (!string.IsNullOrWhiteSpace(hostDirectory)) {
+                roots.Add(hostDirectory);
+            }
         }
 
         if (OperatingSystem.IsLinux()) {
-            candidateRoots.Add("/usr/share/dotnet");
-            candidateRoots.Add("/usr/local/share/dotnet");
+            roots.Add("/usr/share/dotnet");
+            roots.Add("/usr/local/share/dotnet");
+            roots.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet"));
         } else if (OperatingSystem.IsMacOS()) {
-            candidateRoots.Add("/usr/local/share/dotnet");
-            candidateRoots.Add("/opt/homebrew/share/dotnet");
+            roots.Add("/usr/local/share/dotnet");
+            roots.Add("/opt/homebrew/share/dotnet");
+            roots.Add(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".dotnet"));
         } else if (OperatingSystem.IsWindows()) {
-            candidateRoots.Add(@"C:\Program Files\dotnet");
+            roots.Add(@"C:\Program Files\dotnet");
+            roots.Add(@"C:\Program Files (x86)\dotnet");
         }
 
-        foreach (var root in candidateRoots
+        return roots
             .Where(path => !string.IsNullOrWhiteSpace(path))
-            .Distinct(StringComparer.OrdinalIgnoreCase)) {
-            var sdkDir = Path.Combine(root, "sdk");
-            if (!Directory.Exists(sdkDir)) {
-                continue;
-            }
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+    }
+    private static string? FindBestSdkPath(string sdkDirectoryPath) {
+        if (!Directory.Exists(sdkDirectoryPath)) {
+            return null;
+        }
 
-            var bestSdk = Directory.GetDirectories(sdkDir)
+        try {
+            var bestSdk = Directory.GetDirectories(sdkDirectoryPath)
                 .Select(path => new {
                     Path = path,
                     VersionText = System.IO.Path.GetFileName(path),
@@ -128,12 +337,10 @@ public sealed class SolutionManager : ISolutionManager {
                 .OrderByDescending(x => ParseVersion(x.VersionText))
                 .FirstOrDefault();
 
-            if (bestSdk != null) {
-                return bestSdk.Path;
-            }
+            return bestSdk?.Path;
+        } catch {
+            return null;
         }
-
-        return null;
     }
     private static Version ParseVersion(string versionText) {
         var normalized = versionText.Split('-')[0];

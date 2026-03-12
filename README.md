@@ -103,8 +103,8 @@ SharpTools exposes a variety of "SharpTool_*" functions via MCP. Here's a brief 
 
 ## Prerequisites
 
-*   .NET 8+ SDK for running the server (only required for building from source)
-*   The .NET SDK of your target solution
+*   If you build from source: .NET 8+ SDK
+*   To load/analyze a solution: the .NET SDK required by that target solution
 
 ## Installation
 
@@ -182,6 +182,27 @@ Key Options:
 *   `--log-level <level>`: Minimum log level.
 *   `--load-solution <path>`: Path to a `.sln` file to load on startup. Useful for manual testing. It is recommended to let the AI run the LoadSolution tool instead, as it returns some useful information.
 *   `--build-configuration <config>`: Build configuration to use when loading the solution (e.g., `Debug`, `Release`).
+
+## Troubleshooting
+
+### `SharpTool_LoadSolution` fails with `Could not locate an MSBuild SDK directory`
+
+SharpTools could not find an installed .NET SDK that contains `MSBuild.dll`.
+
+1. Verify SDKs visible to `dotnet`:
+   ```bash
+   dotnet --list-sdks
+   ```
+2. If no SDK appears, install the SDK required by the target solution.
+3. If SDK is installed in a custom location, set `SHARPTOOLS_MSBUILD_PATH` to either:
+   - the SDK folder that contains `MSBuild.dll`, or
+   - the dotnet root folder that contains an `sdk/` subfolder.
+
+Example:
+
+```bash
+export SHARPTOOLS_MSBUILD_PATH=/custom/dotnet/sdk/8.0.414
+```
 
 ## Contributing
 
