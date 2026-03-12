@@ -110,16 +110,73 @@ SharpTools exposes a variety of "SharpTool_*" functions via MCP. Here's a brief 
 
 ## Prerequisites
 
-*   .NET 8+ SDK for running the server
+*   .NET 8+ SDK for running the server (only required for building from source)
 *   The .NET SDK of your target solution
 
-## Building
+## Installation
 
-To build the entire solution:
+### Option 1: Quick Install (Recommended)
+
+**Linux/macOS:**
 ```bash
-dotnet build SharpTools.sln
+# Install SSE Server
+curl -fsSL https://github.com/workflow/SharpToolsMCP/releases/latest/download/install.sh | bash -s -- --server sse
+
+# Install Stdio Server
+curl -fsSL https://github.com/workflow/SharpToolsMCP/releases/latest/download/install.sh | bash -s -- --server stdio
 ```
-This will build all services and server applications.
+
+**Windows (PowerShell):**
+```powershell
+# Install SSE Server
+iwr https://github.com/workflow/SharpToolsMCP/releases/latest/download/install.ps1 -useb | iex -ArgumentList @("-ServerType", "sse")
+
+# Install Stdio Server
+iwr https://github.com/workflow/SharpToolsMCP/releases/latest/download/install.ps1 -useb | iex -ArgumentList @("-ServerType", "stdio")
+```
+
+### Option 2: Download Pre-built Binaries
+
+Download the latest release from [GitHub Releases](https://github.com/workflow/SharpToolsMCP/releases) and extract to your preferred location.
+
+Available packages:
+- `sharptools-sse-win-x64-*.zip` - SSE Server for Windows
+- `sharptools-sse-linux-x64-*.tar.gz` - SSE Server for Linux
+- `sharptools-sse-osx-x64-*.tar.gz` - SSE Server for macOS
+- `sharptools-stdio-win-x64-*.zip` - Stdio Server for Windows
+- `sharptools-stdio-linux-x64-*.tar.gz` - Stdio Server for Linux
+- `sharptools-stdio-osx-x64-*.tar.gz` - Stdio Server for macOS
+
+### Option 3: Install via .NET Tool
+
+```bash
+# Install SSE Server
+dotnet tool install -g SharpTools.SseServer
+
+# Install Stdio Server
+dotnet tool install -g SharpTools.StdioServer
+
+# Update
+dotnet tool update -g SharpTools.SseServer
+dotnet tool update -g SharpTools.StdioServer
+```
+
+### Option 4: Build from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/workflow/SharpToolsMCP.git
+cd SharpToolsMCP
+
+# Build the entire solution
+dotnet build SharpTools.sln
+
+# Or publish self-contained executables
+# Windows:
+.\scripts\build.ps1
+# Linux/macOS:
+./scripts/build.sh
+```
 
 ## Running the Servers
 

@@ -18,6 +18,16 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    
+    <!-- Self-contained publishing -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    
+    <!-- Dotnet tool configuration -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sharptools-stdio</ToolCommandName>
+    <PackageId>SharpTools.StdioServer</PackageId>
   </PropertyGroup>
 
 </Project>

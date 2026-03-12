@@ -18,6 +18,16 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>stserver</AssemblyName>
+    
+    <!-- Self-contained publishing -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>false</PublishTrimmed>
+    
+    <!-- Dotnet tool configuration -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>sharptools-sse</ToolCommandName>
+    <PackageId>SharpTools.SseServer</PackageId>
   </PropertyGroup>
 
 </Project>
