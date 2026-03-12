@@ -164,17 +164,10 @@ public static class Program {
 
         try {
             MSBuildLocator.RegisterDefaults();
-        } catch {
-            var instances = MSBuildLocator.QueryVisualStudioInstances().ToArray();
-            if (instances.Length == 0) {
-                throw new InvalidOperationException("No MSBuild instance was found. Install a compatible .NET SDK/MSBuild toolchain before starting SharpTools.");
-            }
-
-            var selectedInstance = instances
-                .OrderByDescending(i => i.Version)
-                .First();
-
-            MSBuildLocator.RegisterInstance(selectedInstance);
+        } catch (Exception ex) {
+            throw new InvalidOperationException(
+                "Failed to register MSBuild. Install a compatible .NET SDK/MSBuild toolchain and ensure 'dotnet --info' works in the same environment that launches SharpTools.",
+                ex);
         }
 
         var buildHostNetcorePath = Path.Combine(AppContext.BaseDirectory, "BuildHost-netcore", "Microsoft.CodeAnalysis.Workspaces.MSBuild.BuildHost.dll");
