@@ -42,7 +42,7 @@ for runtime in "${RUNTIMES[@]}"; do
         -r "$runtime" \
         --self-contained \
         -o "$OUTPUT_DIR/sse-$runtime" \
-        /p:PublishSingleFile=true \
+        /p:PublishSingleFile=false \
         /p:PublishTrimmed=false
     
     # Stdio Server
@@ -52,7 +52,7 @@ for runtime in "${RUNTIMES[@]}"; do
         -r "$runtime" \
         --self-contained \
         -o "$OUTPUT_DIR/stdio-$runtime" \
-        /p:PublishSingleFile=true \
+        /p:PublishSingleFile=false \
         /p:PublishTrimmed=false
     
     echo "  Done: $runtime"

@@ -43,7 +43,7 @@ foreach ($runtime in $Runtimes) {
         -r $runtime `
         --self-contained `
         -o "$OutputDir\sse-$runtime" `
-        /p:PublishSingleFile=true `
+        /p:PublishSingleFile=false `
         /p:PublishTrimmed=false
     
     # Stdio Server
@@ -53,7 +53,7 @@ foreach ($runtime in $Runtimes) {
         -r $runtime `
         --self-contained `
         -o "$OutputDir\stdio-$runtime" `
-        /p:PublishSingleFile=true `
+        /p:PublishSingleFile=false `
         /p:PublishTrimmed=false
     
     Write-Host "  Done: $runtime" -ForegroundColor Green

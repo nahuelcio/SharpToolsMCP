@@ -19,8 +19,8 @@
     <Nullable>enable</Nullable>
     <AssemblyName>stserver</AssemblyName>
     
-    <!-- Self-contained publishing -->
-    <PublishSingleFile>true</PublishSingleFile>
+    <!-- Roslyn MSBuildWorkspace requires BuildHost-netcore as physical files next to the executable -->
+    <PublishSingleFile>false</PublishSingleFile>
     <SelfContained>true</SelfContained>
     <PublishTrimmed>false</PublishTrimmed>
     
