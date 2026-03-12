@@ -35,20 +35,21 @@
 
   <Target Name="CopyRoslynBuildHosts" AfterTargets="Publish">
     <ItemGroup>
-      <RoslynBuildHostFiles Include="$(OutputPath)BuildHost-netcore\**\*" />
-      <RoslynBuildHostFiles Include="$(OutputPath)BuildHost-net472\**\*" />
+      <RoslynBuildHostNetCoreFiles Include="$(OutputPath)BuildHost-netcore\**\*" />
+      <RoslynBuildHostNet472Files Include="$(OutputPath)BuildHost-net472\**\*" />
     </ItemGroup>
 
     <Copy
-      SourceFiles="@(RoslynBuildHostFiles)"
-      DestinationFiles="@(RoslynBuildHostFiles->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')"
+      SourceFiles="@(RoslynBuildHostNetCoreFiles)"
+      DestinationFiles="@(RoslynBuildHostNetCoreFiles->'$(PublishDir)BuildHost-netcore\%(RecursiveDir)%(Filename)%(Extension)')"
       SkipUnchangedFiles="true"
-      Condition="'@(RoslynBuildHostFiles)' != ''" />
-  </Target>
+      Condition="'@(RoslynBuildHostNetCoreFiles)' != ''" />
 
-  <Target Name="RemoveConflictingRuntimeAssemblies" AfterTargets="Publish">
-    <!-- Avoid shadowing .NET 8 inbox assemblies with older NuGet-carried copies in the app root. -->
-    <Delete Files="$(PublishDir)System.Memory.dll" Condition="Exists('$(PublishDir)System.Memory.dll')" />
+    <Copy
+      SourceFiles="@(RoslynBuildHostNet472Files)"
+      DestinationFiles="@(RoslynBuildHostNet472Files->'$(PublishDir)BuildHost-net472\%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      Condition="'@(RoslynBuildHostNet472Files)' != ''" />
   </Target>
 
 </Project>
