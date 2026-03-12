@@ -30,4 +30,17 @@
     <PackageId>SharpTools.StdioServer</PackageId>
   </PropertyGroup>
 
+  <Target Name="CopyRoslynBuildHosts" AfterTargets="Publish">
+    <ItemGroup>
+      <RoslynBuildHostFiles Include="$(OutputPath)BuildHost-netcore\**\*" />
+      <RoslynBuildHostFiles Include="$(OutputPath)BuildHost-net472\**\*" />
+    </ItemGroup>
+
+    <Copy
+      SourceFiles="@(RoslynBuildHostFiles)"
+      DestinationFiles="@(RoslynBuildHostFiles->'$(PublishDir)%(RecursiveDir)%(Filename)%(Extension)')"
+      SkipUnchangedFiles="true"
+      Condition="'@(RoslynBuildHostFiles)' != ''" />
+  </Target>
+
 </Project>
