@@ -15,25 +15,22 @@ public class DocumentToolsLogCategory { }
 
 [McpServerToolType]
 public static class DocumentTools {
-
-    private static string previousFilePathWarned = string.Empty;
-
     [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(ReadRawFromRoslynDocument), Idempotent = true, ReadOnly = true, Destructive = false, OpenWorld = false),
-    Description("Reads the content of a file in the solution or referenced directories. Omits indentation to save tokens.")]
+    Description("Reads the content of a file in the solution or referenced directories. Supports pagination via line ranges. Omits indentation to save tokens.")]
     public static async Task<string> ReadRawFromRoslynDocument(
         ISolutionManager solutionManager,
         IDocumentOperationsService documentOperations,
         ILogger<DocumentToolsLogCategory> logger,
         [Description("The absolute path to the file to read.")] string filePath,
+        [Description("1-based line number to start reading from.")] int startLine = 1,
+        [Description("Maximum number of lines to return.")] int maxLines = 500,
         CancellationToken cancellationToken = default) {
-
-        const int LineCountWarningThreshold = 1000;
 
         return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
             ErrorHandlingHelpers.ValidateStringParameter(filePath, "filePath", logger);
             ToolHelpers.EnsureSolutionLoadedWithDetails(solutionManager, logger, nameof(ReadRawFromRoslynDocument));
 
-            logger.LogInformation("Reading document at {FilePath}", filePath);
+            logger.LogInformation("Reading document at {FilePath} from line {StartLine} with max {MaxLines} lines", filePath, startLine, maxLines);
 
             if (!documentOperations.FileExists(filePath)) {
                 throw new McpException($"File not found: {filePath}");
@@ -43,23 +40,37 @@ public static class DocumentTools {
                 throw new McpException($"File exists but cannot be read: {filePath}");
             }
 
+            if (startLine < 1) {
+                throw new McpException("startLine must be greater than or equal to 1.");
+            }
+
+            if (maxLines < 1) {
+                throw new McpException("maxLines must be greater than or equal to 1.");
+            }
+
             try {
                 var (contents, lines) = await documentOperations.ReadFileAsync(filePath, true, cancellationToken);
-
-                if (lines > LineCountWarningThreshold) {
-                    if (previousFilePathWarned != filePath) {
-                        previousFilePathWarned = filePath;
-
-                        throw new McpException(
-                            $"WARNING: '{filePath}' is very long (over {LineCountWarningThreshold} lines). " +
-                            "Consider using more focused tools to accomplish your task, " +
-                            "or call this tool again with the same arguments to override this warning.");
-                    }
-                    previousFilePathWarned = string.Empty;
-                    logger.LogInformation("Proceeding with reading large file ({LineCount} lines) after warning acknowledgment", lines);
+                if (startLine > lines) {
+                    throw new McpException($"startLine {startLine} is beyond the end of the file, which has {lines} lines.");
                 }
 
-                return contents;
+                var allLines = contents.Split([Environment.NewLine], StringSplitOptions.None);
+                var skipped = startLine - 1;
+                var pageLines = allLines.Skip(skipped).Take(maxLines).ToArray();
+                var endLine = skipped + pageLines.Length;
+                var hasMore = endLine < lines;
+
+                var pageContent = string.Join(Environment.NewLine, pageLines);
+
+                return ToolHelpers.ToJson(new {
+                    filePath,
+                    startLine,
+                    endLine,
+                    totalLines = lines,
+                    maxLines,
+                    hasMore,
+                    contents = pageContent
+                }).ToString();
             } catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException) {
                 logger.LogError(ex, "File not found: {FilePath}", filePath);
                 throw new McpException($"File not found: {filePath}");
