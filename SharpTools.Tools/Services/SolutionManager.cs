@@ -42,7 +42,7 @@ public sealed class SolutionManager : ISolutionManager {
                 properties.Add("Configuration", _buildConfiguration);
             }
             
-            _workspace = MSBuildWorkspace.Create(properties, MefHostServices.DefaultHost);
+            _workspace = MSBuildWorkspace.Create(properties, CreateWorkspaceHostServices());
             _workspace.WorkspaceFailed += OnWorkspaceFailed;
             _logger.LogInformation("Loading solution: {SolutionPath}", solutionPath);
             _currentSolution = await _workspace.OpenSolutionAsync(solutionPath, new ProgressReporter(_logger), cancellationToken);
@@ -239,6 +239,19 @@ public sealed class SolutionManager : ISolutionManager {
         var diagnostic = e.Diagnostic;
         var level = diagnostic.Kind == WorkspaceDiagnosticKind.Failure ? LogLevel.Error : LogLevel.Warning;
         _logger.Log(level, "Workspace diagnostic ({Kind}): {Message}", diagnostic.Kind, diagnostic.Message);
+    }
+    private static HostServices CreateWorkspaceHostServices() {
+        var assemblies = MefHostServices.DefaultAssemblies.ToList();
+        TryAddAssembly(assemblies, "Microsoft.CodeAnalysis.Features");
+        TryAddAssembly(assemblies, "Microsoft.CodeAnalysis.CSharp.Features");
+        return MefHostServices.Create(assemblies.Distinct());
+    }
+    private static void TryAddAssembly(ICollection<Assembly> assemblies, string assemblyName) {
+        try {
+            assemblies.Add(Assembly.Load(assemblyName));
+        } catch {
+            // Ignore optional feature assemblies that are not available in the current deployment.
+        }
     }
     public async Task<INamedTypeSymbol?> FindRoslynNamedTypeSymbolAsync(string fullyQualifiedTypeName, CancellationToken cancellationToken) {
         if (!IsSolutionLoaded) {

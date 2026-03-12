@@ -5,6 +5,7 @@ global using Microsoft.CodeAnalysis.Diagnostics;
 global using Microsoft.CodeAnalysis.Editing;
 global using Microsoft.CodeAnalysis.FindSymbols;
 global using Microsoft.CodeAnalysis.Formatting;
+global using Microsoft.CodeAnalysis.Host;
 global using Microsoft.CodeAnalysis.Host.Mef;
 global using Microsoft.CodeAnalysis.MSBuild;
 global using Microsoft.CodeAnalysis.Options;

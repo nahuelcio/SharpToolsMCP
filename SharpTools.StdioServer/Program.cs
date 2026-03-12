@@ -26,6 +26,7 @@ public static class Program {
         RegisterMsBuild();
         _ = typeof(SolutionTools);
         _ = typeof(AnalysisTools);
+        _ = typeof(CodeFixTools);
         _ = typeof(ModificationTools);
 
         var logDirOption = new Option<string?>("--log-directory") {

@@ -26,6 +26,7 @@ public static class ServiceCollectionExtensions {
         );
         services.AddSingleton<ICodeAnalysisService, CodeAnalysisService>();
         services.AddSingleton<ICodeModificationService, CodeModificationService>();
+        services.AddSingleton<IDiagnosticCodeFixService, DiagnosticCodeFixService>();
         services.AddSingleton<IEditorConfigProvider, EditorConfigProvider>();
         services.AddSingleton<IDocumentOperationsService, DocumentOperationsService>();
         services.AddSingleton<IComplexityAnalysisService, ComplexityAnalysisService>();
