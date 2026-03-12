@@ -100,9 +100,10 @@ $ServerInstallDir = Join-Path $InstallDir $ServerType
 if (Test-Path $ServerInstallDir) {
     Remove-Item -Recurse -Force $ServerInstallDir
 }
+New-Item -ItemType Directory -Path $ServerInstallDir | Out-Null
 
 # Copy new version
-Move-Item -Path "$TempDir\*" -Destination $ServerInstallDir -Force
+Copy-Item -Path "$TempDir\*" -Destination $ServerInstallDir -Recurse -Force
 
 # Create symlink in WindowsApps folder (requires developer mode or admin)
 $Executable = Join-Path $ServerInstallDir "stserver.exe"

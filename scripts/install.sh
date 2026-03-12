@@ -127,13 +127,13 @@ echo ""
 echo "Installing to: $INSTALL_DIR"
 
 # Create install directory
-mkdir -p "$INSTALL_DIR"
+mkdir -p "$INSTALL_DIR/$SERVER_TYPE"
 
 # Remove old version
-rm -rf "$INSTALL_DIR/$SERVER_TYPE"
+rm -rf "$INSTALL_DIR/$SERVER_TYPE"/*
 
 # Copy new version
-mv "$TEMP_DIR"/* "$INSTALL_DIR/$SERVER_TYPE"
+cp -r "$TEMP_DIR"/* "$INSTALL_DIR/$SERVER_TYPE/"
 
 # Create bin directory if it doesn't exist
 mkdir -p "$BIN_DIR"
