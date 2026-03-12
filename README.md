@@ -77,6 +77,12 @@ SharpTools exposes a variety of "SharpTool_*" functions via MCP. Here's a brief 
 *   ~(Disabled) `SharpTool_ViewCallGraph`: Displays incoming and outgoing calls for a method.~
 *   ~(Disabled) `SharpTool_FindPotentialDuplicates`: Finds semantically similar methods or classes.~
 
+### Code Fix & Format Tools
+
+*   `SharpTool_ListDocumentDiagnostics`: Lists diagnostics for a document and available quick actions/code fixes.
+*   `SharpTool_ApplyCodeFix`: Applies a diagnostic code fix by id/occurrence.
+*   `SharpTool_FormatCode`: Runs `dotnet format` on a solution/project/document, with optional diagnostic filters (for example `IDE0063`).
+
 ### Document Tools
 
 *   `SharpTool_ReadRawFromRoslynDocument`: Reads the raw content of a file (indentation omitted).
@@ -202,6 +208,20 @@ Example:
 
 ```bash
 export SHARPTOOLS_MSBUILD_PATH=/custom/dotnet/sdk/8.0.414
+```
+
+### `SharpTool_ApplyCodeFix` cannot find an `IDE*` diagnostic that `dotnet format` reports
+
+Some IDE diagnostics may not be surfaced as Roslyn quick actions in every workspace context.
+
+Use:
+
+```json
+{
+  "tool": "SharpTool_FormatCode",
+  "targetPath": "/absolute/path/to/file-or-project",
+  "diagnosticIds": "IDE0063"
+}
 ```
 
 ## Contributing

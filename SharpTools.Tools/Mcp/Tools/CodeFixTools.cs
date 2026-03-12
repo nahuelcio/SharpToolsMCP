@@ -96,7 +96,9 @@ public static class CodeFixTools {
             }
 
             if (diagnostics.Count == 0) {
-                throw new McpException($"No diagnostics with id '{diagnosticId}' were found in '{filePath}'.");
+                throw new McpException(
+                    $"No diagnostics with id '{diagnosticId}' were found in '{filePath}'. " +
+                    $"Try running '{ToolHelpers.SharpToolPrefix}{nameof(FormatCode)}' with diagnosticIds='{diagnosticId}'.");
             }
 
             if (occurrence > diagnostics.Count) {
@@ -117,6 +119,69 @@ public static class CodeFixTools {
             });
         }, logger, nameof(ApplyCodeFix), cancellationToken);
     }
+    [McpServerTool(Name = ToolHelpers.SharpToolPrefix + nameof(FormatCode), Idempotent = false, ReadOnly = false, Destructive = true, OpenWorld = false)]
+    [Description("Runs `dotnet format` on a solution/project/document. Use this to apply bulk style/analyzer fixes such as IDE0063 when individual code fixes are not discoverable through Roslyn quick actions.")]
+    public static async Task<string> FormatCode(
+        ISolutionManager solutionManager,
+        ILogger<CodeFixToolsLogCategory> logger,
+        [Description("Absolute path to .sln, .csproj, or .cs. If empty, uses the currently loaded solution path.")] string? targetPath,
+        [Description("Optional comma-separated diagnostic IDs (for example: IDE0063,IDE0059). If empty, runs full dotnet format.")] string? diagnosticIds,
+        [Description("When targetPath is a .cs file, restrict formatting to that file with --include.")] bool includeSingleFileWhenTargetIsDocument = true,
+        CancellationToken cancellationToken = default) {
+
+        return await ErrorHandlingHelpers.ExecuteWithErrorHandlingAsync(async () => {
+            ToolHelpers.EnsureSolutionLoadedWithDetails(solutionManager, logger, nameof(FormatCode));
+
+            var resolvedTargetPath = ResolveFormatTargetPath(solutionManager, targetPath);
+            var extension = Path.GetExtension(resolvedTargetPath);
+            var isDocumentTarget = string.Equals(extension, ".cs", StringComparison.OrdinalIgnoreCase);
+
+            List<string>? includePaths = null;
+            string? documentPath = null;
+            if (isDocumentTarget) {
+                var document = GetDocumentByPath(solutionManager, resolvedTargetPath);
+                if (string.IsNullOrWhiteSpace(document.Project.FilePath)) {
+                    throw new McpException($"Could not determine project file path for document '{resolvedTargetPath}'.");
+                }
+
+                documentPath = Path.GetFullPath(resolvedTargetPath);
+                resolvedTargetPath = document.Project.FilePath;
+
+                if (includeSingleFileWhenTargetIsDocument) {
+                    includePaths = new List<string> { documentPath };
+                }
+            }
+
+            string? beforeText = null;
+            if (!string.IsNullOrWhiteSpace(documentPath) && File.Exists(documentPath)) {
+                beforeText = await File.ReadAllTextAsync(documentPath, cancellationToken);
+            }
+
+            var formatResult = await DotnetFormatRunner.RunAsync(resolvedTargetPath, diagnosticIds, includePaths, cancellationToken);
+            EnsureDotnetFormatSucceeded(formatResult, logger, nameof(FormatCode));
+
+            bool changed = false;
+            if (!string.IsNullOrWhiteSpace(documentPath) && beforeText != null && File.Exists(documentPath)) {
+                var afterText = await File.ReadAllTextAsync(documentPath, cancellationToken);
+                changed = !string.Equals(beforeText, afterText, StringComparison.Ordinal);
+            }
+
+            await solutionManager.ReloadSolutionFromDiskAsync(cancellationToken);
+
+            return ToolHelpers.ToJson(new {
+                requestedTargetPath = targetPath,
+                resolvedTargetPath,
+                isDocumentTarget,
+                includeSingleFileWhenTargetIsDocument,
+                diagnosticIds,
+                changed,
+                commandLine = formatResult.CommandLine,
+                exitCode = formatResult.ExitCode,
+                standardOutput = Truncate(formatResult.StandardOutput, 6000),
+                standardError = Truncate(formatResult.StandardError, 6000)
+            });
+        }, logger, nameof(FormatCode), cancellationToken);
+    }
 
     private static Document GetDocumentByPath(ISolutionManager solutionManager, string filePath) {
         var documentId = solutionManager.CurrentSolution?.GetDocumentIdsWithFilePath(filePath).FirstOrDefault();
@@ -126,5 +191,56 @@ public static class CodeFixTools {
 
         var document = solutionManager.CurrentSolution?.GetDocument(documentId);
         return document ?? throw new McpException($"Could not load document from solution: {filePath}");
+    }
+    private static void EnsureDotnetFormatSucceeded(DotnetFormatRunResult result, ILogger logger, string operationName) {
+        if (result.ExitCode == 0) {
+            return;
+        }
+
+        logger.LogError(
+            "dotnet format failed during {Operation}. ExitCode={ExitCode}. Command={Command}. StdErr={StdErr}",
+            operationName,
+            result.ExitCode,
+            result.CommandLine,
+            result.StandardError);
+
+        throw new McpException(
+            $"dotnet format failed with exit code {result.ExitCode}. Command: {result.CommandLine}. " +
+            $"Error: {Truncate(result.StandardError, 2000)}");
+    }
+    private static string ResolveFormatTargetPath(ISolutionManager solutionManager, string? targetPath) {
+        if (!string.IsNullOrWhiteSpace(targetPath)) {
+            var resolvedInputPath = Path.GetFullPath(targetPath);
+            if (!File.Exists(resolvedInputPath)) {
+                throw new McpException($"Target path does not exist: {resolvedInputPath}");
+            }
+
+            var extension = Path.GetExtension(resolvedInputPath);
+            if (string.Equals(extension, ".sln", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(extension, ".csproj", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(extension, ".cs", StringComparison.OrdinalIgnoreCase)) {
+                return resolvedInputPath;
+            }
+
+            throw new McpException("targetPath must point to a .sln, .csproj, or .cs file.");
+        }
+
+        var loadedSolutionPath = solutionManager.CurrentSolution?.FilePath;
+        if (string.IsNullOrWhiteSpace(loadedSolutionPath)) {
+            throw new McpException("No targetPath provided and no loaded solution path is available.");
+        }
+
+        return loadedSolutionPath;
+    }
+    private static string Truncate(string? text, int maxLength) {
+        if (string.IsNullOrEmpty(text)) {
+            return string.Empty;
+        }
+
+        if (text.Length <= maxLength) {
+            return text;
+        }
+
+        return $"{text[..maxLength]}...";
     }
 }
